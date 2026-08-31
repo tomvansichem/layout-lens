@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Layout Lens — testbed</title>
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 15px/1.6 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: #f6f7f9;
+    color: #1e232b;
+  }
+  @media (prefers-color-scheme: dark) {
+    body { background: #14161a; color: #e6e8eb; }
+  }
+  header, main { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
+  header { border-bottom: 1px solid #d7dbe0; }
+  @media (prefers-color-scheme: dark) { header { border-color: #2a2e35; } }
+  h1 { margin: 0 0 8px; font-size: 24px; }
+  h2 { margin: 0 0 4px; font-size: 17px; }
+  code, kbd {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.9em;
+  }
+  kbd {
+    background: #e7e9ee; border: 1px solid #c3c8d0; border-bottom-width: 2px;
+    border-radius: 4px; padding: 1px 5px;
+  }
+  @media (prefers-color-scheme: dark) { kbd { background: #22262d; border-color: #3a3f48; } }
+
+  .legend { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 6px; }
+  .badge {
+    display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .03em;
+    text-transform: uppercase; padding: 2px 7px; border-radius: 999px; margin-right: 6px;
+    vertical-align: 1px;
+  }
+  .badge.ok   { background: #ffd7d3; color: #a3231a; }
+  .badge.clip { background: #ffe3b0; color: #8a5512; }
+  .badge.no   { background: #d7e6d5; color: #2f6e2a; }
+  .badge.gap  { background: #e2e5ea; color: #55606e; }
+
+  .case {
+    margin: 28px 0;
+    padding: 20px;
+    border: 1px solid #d7dbe0;
+    border-radius: 10px;
+    background: #fff;
+  }
+  @media (prefers-color-scheme: dark) {
+    .case { background: #1b1e23; border-color: #2a2e35; }
+  }
+  .case > p { margin: 4px 0; }
+  .case .expect { color: #555c66; font-size: 14px; }
+  @media (prefers-color-scheme: dark) { .case .expect { color: #a4abb4; } }
+
+  /* The "stage" delimits where the test element lives; its dashed border also
+     stops the test element's margins from collapsing into the page. */
+  .stage {
+    margin-top: 14px;
+    padding: 50px;
+    border: 1px dashed #b9c0ca;
+    border-radius: 8px;
+    background:
+      linear-gradient(45deg, rgba(0,0,0,.03) 25%, transparent 25%, transparent 75%, rgba(0,0,0,.03) 75%) 0 0 / 16px 16px;
+    display: flow-root;
+  }
+  @media (prefers-color-scheme: dark) { .stage { border-color: #3a3f48; } }
+
+  /* The element under test. box-shadow (not border) marks its edge without
+     changing its box. */
+  .box {
+    display: flex; align-items: center; justify-content: center;
+    background: #dbe4ff;
+    box-shadow: inset 0 0 0 1px #8b98b8;
+    color: #1e293b; font-weight: 700; font-size: 13px;
+    border-radius: 4px;
+  }
+
+  .note { font-size: 13px; color: #6b7280; margin-top: 10px; }
+  .summary { background: #eef1f5; }
+  @media (prefers-color-scheme: dark) { .summary { background: #20242b; } }
+  .summary ul { margin: 8px 0 0; padding-left: 20px; }
+  .summary li { margin: 4px 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Layout Lens — testbed</h1>
+  <p>Press <kbd>Alt&nbsp;+&nbsp;S</kbd> to activate, then hover each box.
+     <kbd>↑</kbd>/<kbd>↓</kbd> walk the DOM, <kbd>c</kbd> copies the measurement,
+     <kbd>f</kbd> freezes tracking, <kbd>Esc</kbd> exits.</p>
+  <p>Open this file directly as <code>file://</code> to also test that the
+     extension runs on local files (needs <em>Allow access to file URLs</em>
+     enabled on the extension's details page).</p>
+  <ul class="legend">
+    <li><span class="badge ok">flags · red</span> size mismatch — bold dashed <strong>red</strong> outline + a <code>CSS → Visual</code> variance line</li>
+    <li><span class="badge clip">flags · amber</span> clipped content — bold dashed <strong>amber</strong> outline + a <code>content … clipped to …</code> line</li>
+    <li><span class="badge no">no flag</span> CSS and Visual sizes match, nothing clipped — default hover state only</li>
+    <li><span class="badge gap">gap</span> a case the current build intentionally does <strong>not</strong> flag — see why at the bottom</li>
+  </ul>
+</header>
+
+<main>
+
+  <!-- ============================================================ A ==== -->
+  <h2 style="font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:#8a929c;margin:8px 0 -8px">
+    A · padding &amp; margin inspection
+  </h2>
+
+  <section class="case">
+    <h2>A1 · uniform padding + margin</h2>
+    <p class="expect"><span class="badge no">no flag</span>
+      Green <code>24px</code> on all four sides, orange <code>32px</code> on all four sides.
+      Tooltip: <code>CSS 220&times;140 | Visual 220&times;140</code>.</p>
+    <div class="stage">
+      <div class="box" style="width:220px;height:140px;padding:24px;margin:32px">A1</div>
+    </div>
+  </section>
+
+  <section class="case">
+    <h2>A2 · asymmetric, with zero sides</h2>
+    <p class="expect"><span class="badge no">no flag</span>
+      Padding labels on <em>top 8 / left 16 / bottom 40</em> only — <strong>no</strong> right label.
+      Margin labels on <em>top 12 / right 24 / left 4</em> only — <strong>no</strong> bottom label.</p>
+    <div class="stage">
+      <div class="box" style="width:240px;height:120px;padding:8px 0 40px 16px;margin:12px 24px 0 4px">A2</div>
+    </div>
+  </section>
+
+  <section class="case">
+    <h2>A3 · padding ring sits inside the border</h2>
+    <p class="expect"><span class="badge no">no flag</span>
+      6px border, then a 20px green padding ring <em>inside</em> it, then 16px orange margin outside.
+      Tooltip: <code>CSS 240&times;150 | Visual 240&times;150</code>.</p>
+    <div class="stage">
+      <div class="box" style="width:240px;height:150px;padding:20px;border:6px solid #7c8aa5;margin:16px">A3</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ B ==== -->
+  <h2 style="font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:#8a929c;margin:32px 0 -8px">
+    B · CSS size vs rendered size
+  </h2>
+
+  <section class="case">
+    <h2>B1 · <code>transform: scale(0.8)</code></h2>
+    <p class="expect"><span class="badge ok">flags</span>
+      <code>W CSS 300px &rarr; Visual 240px (-60px)</code>,
+      <code>H CSS 150px &rarr; Visual 120px (-30px)</code>, and a cause line
+      <code>↳ transform on this element</code>.</p>
+    <div class="stage">
+      <div class="box" style="width:300px;height:150px;transform:scale(.8)">B1</div>
+    </div>
+  </section>
+
+  <section class="case">
+    <h2>B2 · <code>transform: scale(1.2)</code></h2>
+    <p class="expect"><span class="badge ok">flags</span>
+      Positive variance: <code>W CSS 260px &rarr; Visual 312px (+52px)</code>.</p>
+    <div class="stage">
+      <div class="box" style="width:260px;height:120px;transform:scale(1.2)">B2</div>
+    </div>
+  </section>
+
+  <section class="case">
+    <h2>B3 · <code>transform: rotate(25deg)</code></h2>
+    <p class="expect"><span class="badge ok">flags</span>
+      The rotated bounding box is larger than the layout box on <em>both</em> axes
+      (~<code>219&times;166</code> visual for a <code>200&times;90</code> element).</p>
+    <div class="stage">
+      <div class="box" style="width:200px;height:90px;transform:rotate(25deg)">B3</div>
+    </div>
+  </section>
+
+  <section class="case">
+    <h2>B4 · ancestor is scaled</h2>
+    <p class="expect"><span class="badge ok">flags</span>
+      The element has no transform of its own, but a parent has <code>scale(0.5)</code>.
+      Hover the inner box: <code>W CSS 400px &rarr; Visual 200px (-200px)</code>
+      and <code>↳ ancestor div is transformed</code> — the cause points at the
+      parent, not this element.</p>
+    <div class="stage">
+      <div style="transform:scale(.5);transform-origin:top left;width:400px">
+        <div class="box" style="width:400px;height:120px">B4 inner</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="case">
+    <h2>B5 · control — no transform</h2>
+    <p class="expect"><span class="badge no">no flag</span>
+      <code>CSS 250&times;100 | Visual 250&times;100</code>, plain blue outline.</p>
+    <div class="stage">
+      <div class="box" style="width:250px;height:100px">B5</div>
+    </div>
+  </section>
+
+  <section class="case">
+    <h2>B6 · padding + border, <code>box-sizing: content-box</code></h2>
+    <p class="expect"><span class="badge no">no flag</span>
+      A naive <code>width</code>-vs-<code>rect</code> check would falsely report
+      <code>200</code> vs <code>268</code>. Layout Lens normalizes box-sizing first,
+      so this stays quiet: <code>CSS 268&times;168 | Visual 268&times;168</code>.</p>
+    <div class="stage">
+      <div class="box" style="width:200px;height:100px;padding:30px;border:4px solid #7c8aa5;box-sizing:content-box">B6</div>
+    </div>
+  </section>
+
+  <section class="case">
+    <h2>B7 · same numbers, <code>box-sizing: border-box</code></h2>
+    <p class="expect"><span class="badge no">no flag</span>
+      <code>CSS 200&times;100 | Visual 200&times;100</code>.</p>
+    <div class="stage">
+      <div class="box" style="width:200px;height:100px;padding:30px;border:4px solid #7c8aa5;box-sizing:border-box">B7</div>
+    </div>
+  </section>
+
+  <section class="case">
+    <h2>B8 · <code>zoom: 0.75</code></h2>
+    <p class="expect"><span class="badge gap">gap</span>
+      <em>Chrome-version dependent.</em> Older Chrome reported the pre-zoom width and
+      this flagged. Chrome&nbsp;128+ folds <code>zoom</code> into
+      <code>getComputedStyle()</code>, so both values agree and it no longer flags.</p>
+    <div class="stage">
+      <div class="box" style="width:280px;height:120px;zoom:.75">B8</div>
+    </div>
+  </section>
+
+  <section class="case">
+    <h2>B9 · <code>min-width</code> clamping</h2>
+    <p class="expect"><span class="badge gap">gap</span>
+      <code>width:120px; min-width:360px</code> &rarr; renders at 360px.
+      <code>getComputedStyle().width</code> already returns the <em>used</em> value
+      (<code>360px</code>), so Layout Lens sees no discrepancy. Clamping is
+      <strong>not</strong> detected.</p>
+    <div class="stage">
+      <div class="box" style="width:120px;min-width:360px;height:100px">B9</div>
+    </div>
+  </section>
+
+  <section class="case">
+    <h2>B10 · <code>flex-shrink</code></h2>
+    <p class="expect"><span class="badge gap">gap</span>
+      Two items asking for <code>600px</code> each inside a <code>320px</code> row,
+      shrinking to ~<code>160px</code>. Computed width already reflects the shrink,
+      so no flag.</p>
+    <div class="stage">
+      <div style="display:flex;width:320px;gap:0">
+        <div class="box" style="flex:1 1 600px;height:80px">B10a</div>
+        <div class="box" style="flex:1 1 600px;height:80px;background:#ffe0e0;box-shadow:inset 0 0 0 1px #c88">B10b</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="case">
+    <h2>B11 · <code>overflow: hidden</code> clipping content</h2>
+    <p class="expect"><span class="badge clip">flags · amber</span>
+      The box is <code>200px</code> wide; its child is <code>520px</code> and gets
+      clipped with no scrollbar to reach it. Its layout box and computed size
+      still agree (no red), so this is the amber clip tier:
+      <code>↔ content ~520px clipped to 200px (~320px hidden)</code>.</p>
+    <div class="stage">
+      <div class="box" style="width:200px;height:90px;overflow:hidden;justify-content:flex-start">
+        <div style="flex:0 0 520px;height:60px;background:#ffd9a8;box-shadow:inset 0 0 0 1px #c9962f;display:flex;align-items:center;padding-left:8px">
+          B11 child is 520px wide &rarr; clipped
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="case">
+    <h2>B12 · <code>overflow: hidden</code>, vertical</h2>
+    <p class="expect"><span class="badge clip">flags · amber</span>
+      Content <code>~240px</code> tall in a <code>90px</code> box:
+      <code>↕ content ~240px clipped to 90px (~150px hidden)</code>.</p>
+    <div class="stage">
+      <div class="box" style="width:220px;height:90px;overflow:hidden;align-items:flex-start;justify-content:flex-start;padding:6px">
+        <div style="height:240px;width:60px;background:#ffd9a8;box-shadow:inset 0 0 0 1px #c9962f">B12</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="case">
+    <h2>B13 · <code>overflow: hidden</code> but content fits</h2>
+    <p class="expect"><span class="badge no">no flag</span>
+      <code>overflow: hidden</code> is extremely common (BFC / clearfix). When
+      nothing actually overflows, there is nothing to report.</p>
+    <div class="stage">
+      <div class="box" style="width:260px;height:90px;overflow:hidden">B13 content fits</div>
+    </div>
+  </section>
+
+  <section class="case">
+    <h2>B14 · text truncated with <code>text-overflow: ellipsis</code></h2>
+    <p class="expect"><span class="badge clip">flags · amber</span>
+      The classic single-line ellipsis recipe is <code>overflow:hidden</code> +
+      <code>white-space:nowrap</code>. Layout Lens reports how much text is cut:
+      <code>↔ content ~Npx clipped to ~200px</code>.</p>
+    <div class="stage">
+      <div class="box" style="display:block;width:220px;height:44px;line-height:44px;padding:0 10px;text-align:left;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">
+        B14 — this caption is deliberately far too long to fit on one line
+      </div>
+    </div>
+  </section>
+
+  <section class="case">
+    <h2>B15 · scroll container (excluded on purpose)</h2>
+    <p class="expect"><span class="badge no">no flag</span>
+      <code>overflow-y: scroll</code>. The content is larger than the box, but the
+      user can scroll to it — not data loss — so the clip tier skips
+      <code>scroll</code> / <code>auto</code>. <em>(A classic scrollbar could
+      still show a small red size mismatch from the ~15px gutter; overlay
+      scrollbars — the macOS default — show nothing.)</em></p>
+    <div class="stage">
+      <div class="box" style="width:220px;height:80px;overflow-y:scroll;align-items:flex-start;justify-content:flex-start;padding:6px">
+        <div style="height:200px">B15 tall content</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ C ==== -->
+  <h2 style="font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:#8a929c;margin:32px 0 -8px">
+    C · sub-pixel
+  </h2>
+
+  <section class="case">
+    <h2>C1 · thirds of an odd width</h2>
+    <p class="expect"><span class="badge no">no flag</span>
+      Three <code>33.3333%</code> items in a <code>601px</code> row land on
+      fractional widths (~<code>200.33px</code>). <code>getComputedStyle()</code>
+      and <code>getBoundingClientRect()</code> both report the same fraction, so
+      the 0.5px threshold is never crossed — hover each and confirm the numbers
+      match.</p>
+    <div class="stage">
+      <div style="display:flex;width:601px">
+        <div class="box" style="flex:0 0 33.3333%;height:70px">C1a</div>
+        <div class="box" style="flex:0 0 33.3333%;height:70px;background:#e3d9ff">C1b</div>
+        <div class="box" style="flex:0 0 33.3333%;height:70px">C1c</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ summary -->
+  <section class="case summary">
+    <h2>What this testbed shows</h2>
+    <ul>
+      <li><strong>Padding / margin / element size on hover</strong> — fully working (A1–A3).</li>
+      <li><span class="badge ok">red</span><strong>Size mismatch</strong> — CSS
+        box size vs painted size. Fires on CSS transforms on the element (B1–B3)
+        or any ancestor (B4). These are the cases where the layout box and the
+        painted box genuinely differ.</li>
+      <li><span class="badge clip">amber</span><strong>Clipped content</strong> —
+        content larger than the box with <code>overflow: hidden</code> /
+        <code>clip</code> and no scrollbar to reach it (B11, B12, B14, including
+        <code>text-overflow: ellipsis</code> truncation). Reports how many pixels
+        are hidden.</li>
+      <li><span class="badge no">quiet</span>Matching sizes (B5–B7),
+        <code>overflow:hidden</code> with no overflow (B13), and user-scrollable
+        containers (B15) stay in the plain hover state.</li>
+      <li><span class="badge gap">gap</span><strong>Still not flagged, by
+        design:</strong> <code>zoom</code> on modern Chrome (B8),
+        <code>min</code>/<code>max</code> clamping (B9), <code>flex-shrink</code>
+        (B10), and sub-pixel rounding (C1) — <code>getComputedStyle()</code>
+        already returns the post-layout <em>used</em> value, so there is nothing
+        to compare against. The README's discrepancy claim covers
+        <strong>transforms</strong> and <strong>overflow clipping</strong>.</li>
+    </ul>
+  </section>
+
+</main>
+</body>
+</html>

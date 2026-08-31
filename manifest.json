@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "Layout Lens",
+  "version": "0.9.0",
+  "version_name": "0.9.0 (beta)",
+  "description": "Hover inspector for padding/margin plus a CSS-vs-rendered size discrepancy checker. Activated only by a keyboard shortcut.",
+  "minimum_chrome_version": "102",
+
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+
+  "permissions": ["activeTab"],
+
+  "background": {
+    "service_worker": "background.js"
+  },
+
+  "commands": {
+    "toggle-layout-lens": {
+      "suggested_key": {
+        "default": "Alt+S",
+        "mac": "Alt+S"
+      },
+      "description": "Toggle the Layout Lens inspector on the active tab"
+    }
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["overlay.css"],
+      "run_at": "document_idle",
+      "all_frames": true,
+      "match_about_blank": true
+    }
+  ]
+}

@@ -1,0 +1,176 @@
+/* Layout Lens — overlay styles
+ *
+ * This file is injected on every page, but it only defines rules scoped to
+ * `#layout-lens-root`, which exists only while the inspector is active. So it
+ * has zero visual effect until content.js builds the overlay.
+ *
+ * Everything is `!important` and id-scoped so hostile page CSS (e.g. a global
+ * `div { all: unset }`) can't distort the measurements we're drawing.
+ */
+
+#layout-lens-root {
+  position: fixed !important;
+  inset: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  pointer-events: none !important;   /* page stays fully interactive */
+  z-index: 2147483647 !important;
+  contain: strict !important;
+}
+
+#layout-lens-root * {
+  box-sizing: border-box !important;
+  pointer-events: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace !important;
+}
+
+/* Absolutely-positioned rectangles, coordinates are viewport pixels because
+   the root is a fixed, full-viewport containing block. left/top/width/height
+   are set from JS as inline styles, so they must NOT be declared here with
+   !important — that would override the inline values and clamp everything to
+   the origin. */
+#layout-lens-root .ll-box {
+  position: absolute !important;
+  display: none;
+}
+
+/* Margin ring (DevTools orange). The value sits in the border of this box,
+   so the border-width is set per-side to the margin values. */
+#layout-lens-root .ll-margin {
+  border-style: solid !important;
+  border-color: rgba(246, 178, 107, 0.55) !important;
+  background: transparent !important;
+}
+
+/* Padding ring (DevTools green), same border trick. */
+#layout-lens-root .ll-padding {
+  border-style: solid !important;
+  border-color: rgba(135, 200, 130, 0.6) !important;
+  background: transparent !important;
+}
+
+/* The element's own border-box outline. */
+#layout-lens-root .ll-outline {
+  border: 1px solid rgba(70, 130, 220, 0.9) !important;
+  background: rgba(90, 150, 230, 0.06) !important;
+}
+
+/* Keyboard tree-navigation state: this element was reached via ArrowUp/Down. */
+#layout-lens-root .ll-outline.ll-locked {
+  border: 2px solid #b98cff !important;
+  background: rgba(185, 140, 255, 0.09) !important;
+}
+
+/* Clip warning: content is larger than the box and overflow hides it. */
+#layout-lens-root .ll-outline.ll-clip {
+  border: 2px dashed #f59e0b !important;
+  background: rgba(245, 158, 11, 0.08) !important;
+}
+
+/* Discrepancy warning: CSS size != rendered size. Highest priority — declared
+   last so it wins if the element somehow carries more than one state class. */
+#layout-lens-root .ll-outline.ll-mismatch {
+  border: 2px dashed #ff3b30 !important;
+  background: rgba(255, 59, 48, 0.07) !important;
+}
+
+/* Layer that holds the per-side pixel labels. */
+#layout-lens-root .ll-labels {
+  position: absolute !important;
+  inset: 0 !important;
+}
+
+#layout-lens-root .ll-label {
+  position: absolute !important;
+  font-size: 11px !important;
+  line-height: 1.3 !important;
+  color: #fff !important;
+  background: rgba(20, 20, 20, 0.88) !important;
+  padding: 1px 4px !important;
+  border-radius: 3px !important;
+  white-space: nowrap !important;
+  transform: translate(-50%, -50%) !important;
+  text-shadow: none !important;
+  letter-spacing: 0 !important;
+}
+#layout-lens-root .ll-label.ll-pad { background: rgba(45, 110, 40, 0.92) !important; }
+#layout-lens-root .ll-label.ll-mar { background: rgba(160, 92, 22, 0.92) !important; }
+
+/* Info tooltip that follows the cursor. */
+#layout-lens-root .ll-tip {
+  position: absolute !important;
+  display: none;
+  font-size: 11px !important;
+  line-height: 1.5 !important;
+  color: #e9e9e9 !important;
+  background: rgba(18, 18, 20, 0.96) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border-radius: 5px !important;
+  padding: 7px 9px !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  max-width: 360px !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45) !important;
+}
+#layout-lens-root .ll-tip.ll-mismatch {
+  border-color: #ff3b30 !important;
+}
+#layout-lens-root .ll-tip.ll-clip {
+  border-color: #f59e0b !important;
+}
+#layout-lens-root .ll-tip.ll-locked {
+  border-color: #b98cff !important;
+}
+
+/* Ancestor breadcrumb, small and dim. */
+#layout-lens-root .ll-tip .ll-tip-crumb {
+  font-size: 10px !important;
+  color: #8a8f98 !important;
+  margin-bottom: 3px !important;
+}
+
+/* The element label — the prominent line. */
+#layout-lens-root .ll-tip .ll-tip-sel {
+  display: inline-block !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.09) !important;
+  padding: 2px 5px !important;
+  border-radius: 3px !important;
+  margin-bottom: 3px !important;
+}
+
+/* Sibling position / lock indicator. */
+#layout-lens-root .ll-tip .ll-tip-meta {
+  font-size: 10px !important;
+  letter-spacing: 0.03em !important;
+  color: #8a8f98 !important;
+  margin-bottom: 3px !important;
+}
+#layout-lens-root .ll-tip .ll-tip-meta.ll-tip-locked {
+  color: #ffb454 !important;
+  font-weight: 600 !important;
+}
+
+#layout-lens-root .ll-tip .ll-warn {
+  color: #ff6b61 !important;
+}
+#layout-lens-root .ll-tip .ll-clipwarn {
+  color: #f0ad4e !important;
+}
+#layout-lens-root .ll-tip .ll-tip-ok {
+  color: #7ee787 !important;
+  font-weight: 600 !important;
+  margin-top: 3px !important;
+}
+
+/* Keyboard hint footer. */
+#layout-lens-root .ll-tip .ll-tip-hint {
+  font-size: 10px !important;
+  color: #6b7280 !important;
+  margin-top: 4px !important;
+}
