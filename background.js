@@ -25,18 +25,33 @@ function broadcast(tabId, active) {
   });
 }
 
-// Global keyboard shortcut: flip the active tab's state and push it out.
-chrome.commands.onCommand.addListener((command) => {
-  if (command !== "toggle-layout-lens") return;
-
+function onActiveTab(fn) {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     const tab = tabs[0];
-    if (!tab || tab.id == null) return;
-
-    const next = !tabActive.get(tab.id);
-    tabActive.set(tab.id, next);
-    broadcast(tab.id, next);
+    if (tab && tab.id != null) fn(tab.id);
   });
+}
+
+// Global keyboard shortcuts. Both are rebindable at chrome://extensions/shortcuts
+// if Alt+S / Alt+U clash with something.
+chrome.commands.onCommand.addListener((command) => {
+  if (command === "toggle-layout-lens") {
+    // Flip the active tab's on/off state and push it to every frame.
+    onActiveTab((tabId) => {
+      const next = !tabActive.get(tabId);
+      tabActive.set(tabId, next);
+      broadcast(tabId, next);
+    });
+  } else if (command === "cycle-layout-lens-unit") {
+    // Display-only: forwarded to every frame, ignored unless that frame is
+    // active. The unit is a plain variable in the content script — no tab
+    // state here, nothing persisted.
+    onActiveTab((tabId) => {
+      chrome.tabs.sendMessage(tabId, { type: "LAYOUT_LENS_CYCLE_UNIT" }, () => {
+        void chrome.runtime.lastError;
+      });
+    });
+  }
 });
 
 // A content script asks us to turn the whole tab off (the user pressed Esc).

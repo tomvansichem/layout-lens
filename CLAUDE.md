@@ -41,6 +41,9 @@ Esc (content.js) ──> deactivate() locally
                  background: tabActive.set(tabId,false) + broadcast(false)
 ```
 
+`Alt+U` takes the same worker→frames path with `{type:"LAYOUT_LENS_CYCLE_UNIT"}`.
+It's display-only, so the worker just forwards it — no `tabActive`, no state.
+
 **The worker is the single source of truth for on/off state.** Content scripts
 never flip their own state independently — that's what keeps multi-frame pages
 in sync (one `Alt+S` = whole tab, `Esc` anywhere = whole tab off).
@@ -79,6 +82,14 @@ persisted. Cleared on tab close and on `status === "loading"`.
 - **Transform cause:** `readMetrics` sets `m.xform` — `"transform on this
   element"` or `ancestor <sel> is transformed` (walks `parentElement` calling
   `getComputedStyle`). Shown as a `↳` line only inside the mismatch block.
+- **Unit toggle (`Alt+U`):** `unit` cycles `px`→`rem`→`em` (module `let`, back
+  to `px` on `deactivate` — no storage). Display-only: measuring stays in px,
+  `fmtLen()` converts at render time. `unitScale` is recomputed each frame in
+  `render()` — `rem` divides by a fresh `getComputedStyle(documentElement)
+  .fontSize`, `em` by the target's cached `m.fontPx`; `|| 16` is just a floor
+  for an unparseable value. Feeds the padding/margin labels, the `CSS…|Visual…`
+  line, and the variance/`fmtDelta` lines (not the clip line). `.ll-unit` is a
+  ~1s opacity-fade toast — the only CSS transition in `overlay.css`.
 - **Size-mismatch check (red):** `readMetrics` normalizes
   `getComputedStyle().width/height` to a **border-box** figure (adds
   padding+border when box-sizing is content-box) so ordinary padded elements are
@@ -136,6 +147,10 @@ match `overlay.css` (`#f6b26b`, `#87c882`).
 - `overflow:hidden` with content that fits, and an `overflow:auto` scroll box:
   **no** clip UI.
 - DevTools open, resize viewport: overlay tracks.
+- `Alt+U` cycles `px`→`rem`→`em`→`px`: every label, the `CSS…|Visual…` line and
+  the variance line switch unit; `Unit: …` flashes ~1s. Override `<html>`
+  `font-size` → `rem` tracks it. On an element with its own `font-size`, `em`
+  differs from `rem`. `Esc` / `Alt+S`-off returns to `px`.
 - Full matrix: open `test/testbed.html` (also the `file://` check).
 
 ## Deferred / not done

@@ -30,6 +30,14 @@
   let mouseX = 0;
   let mouseY = 0;
 
+  // Display unit for every measurement the overlay prints. The measuring stays
+  // in CSS pixels throughout — this only converts numbers at render time. Alt+U
+  // cycles it; it resets to "px" on reload or on deactivate. No storage.
+  const UNITS = ["px", "rem", "em"];
+  let unit = "px";
+  let unitScale = 1; // px per `unit`; recomputed each frame in render()
+  let unitToastTimer = 0;
+
   // DOM-tree navigation. While `lockedEl` is set, the mouse no longer picks the
   // target — ArrowUp/ArrowDown walk the ancestor chain instead. `originEl` is
   // the deepest element we started from, so ArrowDown can retrace the descent.
@@ -52,6 +60,7 @@
   let outline = null;
   let labelLayer = null;
   let tip = null;
+  let unitToast = null; // transient "Unit: rem" label, shown ~1s on Alt+U
 
   // ---- Small helpers -----------------------------------------------------
   const max0 = (n) => (n > 0 ? n : 0);
@@ -62,7 +71,14 @@
     return Number.isInteger(v) ? String(v) : v.toFixed(1);
   };
 
-  const fmtDelta = (d) => (d > 0 ? "+" : "-") + r(Math.abs(d)) + "px";
+  // Format a px measurement in the active display unit. px keeps the form above;
+  // rem/em divide by `unitScale` and round to 2 decimals — the ×100/100 also
+  // clears floating-point noise like 1.4999999. Trailing zeros fall off via
+  // String coercion (1.5, not 1.50).
+  const fmtLen = (px) =>
+    unit === "px" ? r(px) + "px" : Math.round((px / unitScale) * 100) / 100 + unit;
+
+  const fmtDelta = (d) => (d > 0 ? "+" : "-") + fmtLen(Math.abs(d));
 
   // A full CSS-ish label for an element: tag#id.class.class
   function describe(el) {
@@ -91,9 +107,10 @@
     outline = div("ll-box ll-outline");
     labelLayer = div("ll-labels");
     tip = div("ll-tip");
+    unitToast = div("ll-unit");
 
     // Order matters for stacking: margin behind padding behind outline.
-    root.append(marginBox, paddingBox, outline, labelLayer, tip);
+    root.append(marginBox, paddingBox, outline, labelLayer, tip, unitToast);
 
     // documentElement is always present, even on bare file:// or XML pages.
     document.documentElement.appendChild(root);
@@ -166,6 +183,11 @@
     m.ovX = cs.overflowX;
     m.ovY = cs.overflowY;
 
+    // This element's own font-size, the divisor for `em` display. Cached with
+    // the rest — it only changes when the target changes. (`rem` divides by the
+    // root font-size instead, read fresh each frame.)
+    m.fontPx = n(cs.fontSize);
+
     // Where a transform lives, if any — the usual reason cssW/cssH and the
     // rendered rect disagree. Surfaced in the tooltip only when there's an
     // actual size mismatch, so this walk pays off exactly when it's needed.
@@ -204,6 +226,14 @@
     const scrollH = el.scrollHeight;
     const clientH = el.clientHeight;
     const m = metrics;
+
+    // px per display unit. `rem` reads the root font-size fresh here so a page
+    // that overrides <html> font-size is respected; `em` uses the target's own
+    // cached font-size. The `|| 16` is only a floor for an unparseable value.
+    unitScale =
+      unit === "rem" ? parseFloat(getComputedStyle(document.documentElement).fontSize) || 16 :
+      unit === "em" ? m.fontPx || 16 :
+      1;
 
     // Margin ring: box grows outward from the border-box by the margins;
     // the margin values live in this box's border.
@@ -266,7 +296,7 @@
       if (value <= 0.5) return;
       const d = document.createElement("div");
       d.className = "ll-label " + kind;
-      d.textContent = r(value) + "px";
+      d.textContent = fmtLen(value);
       d.style.left = x + "px";
       d.style.top = y + "px";
       labelLayer.appendChild(d);
@@ -328,15 +358,15 @@
       "ll-tip-meta" + (tags.length ? " ll-tip-locked" : "")
     );
 
-    const cssStr = m.cssW == null ? "CSS n/a" : `CSS ${r(m.cssW)}×${r(m.cssH)}`;
-    line(`${cssStr}  |  Visual ${r(vw)}×${r(vh)}`, null, true);
+    const cssStr = m.cssW == null ? "CSS n/a" : `CSS ${fmtLen(m.cssW)}×${fmtLen(m.cssH)}`;
+    line(`${cssStr}  |  Visual ${fmtLen(vw)}×${fmtLen(vh)}`, null, true);
 
     if (mismatch) {
       if (Math.abs(dW) > 0.5) {
-        line(`W  CSS ${r(m.cssW)}px → Visual ${r(vw)}px  (${fmtDelta(dW)})`, "ll-warn", true);
+        line(`W  CSS ${fmtLen(m.cssW)} → Visual ${fmtLen(vw)}  (${fmtDelta(dW)})`, "ll-warn", true);
       }
       if (Math.abs(dH) > 0.5) {
-        line(`H  CSS ${r(m.cssH)}px → Visual ${r(vh)}px  (${fmtDelta(dH)})`, "ll-warn", true);
+        line(`H  CSS ${fmtLen(m.cssH)} → Visual ${fmtLen(vh)}  (${fmtDelta(dH)})`, "ll-warn", true);
       }
       if (m.xform) line(`↳ ${m.xform}`, "ll-warn", true);
     }
@@ -477,6 +507,20 @@
     ensureLoop();
   }
 
+  // Alt+U — step the display unit px → rem → em → px. Flash the choice for ~1s
+  // so there's feedback without a permanent readout, then let the running rAF
+  // loop repaint labels and tip in the new unit.
+  function cycleUnit() {
+    unit = UNITS[(UNITS.indexOf(unit) + 1) % UNITS.length];
+    unitToast.textContent = "Unit: " + unit;
+    unitToast.style.opacity = "1";
+    clearTimeout(unitToastTimer);
+    unitToastTimer = setTimeout(() => {
+      unitToast.style.opacity = "0";
+    }, 1000);
+    ensureLoop();
+  }
+
   function copyReport() {
     if (!lastReport) return;
     copyText(lastReport);
@@ -605,13 +649,17 @@
     window.removeEventListener("keydown", onKeyDown, true);
     if (rafId) cancelAnimationFrame(rafId);
     rafId = 0;
+    clearTimeout(unitToastTimer);
+    unitToastTimer = 0;
     if (root) root.remove();
-    root = marginBox = paddingBox = outline = labelLayer = tip = null;
+    root = marginBox = paddingBox = outline = labelLayer = tip = unitToast = null;
     currentEl = null;
     metrics = null;
     lockedEl = null;
     originEl = null;
     frozen = false;
+    unit = "px"; // resets with the tool — no unit persists across a toggle
+    unitScale = 1;
     lastReport = "";
     copiedAt = 0;
   }
@@ -620,8 +668,12 @@
   // The worker owns the on/off state and pushes it here. activate() and
   // deactivate() are both idempotent, so a redundant SET is harmless.
   chrome.runtime.onMessage.addListener((msg) => {
-    if (!msg || msg.type !== "LAYOUT_LENS_SET") return;
-    if (msg.active) activate();
-    else deactivate();
+    if (!msg) return;
+    if (msg.type === "LAYOUT_LENS_SET") {
+      if (msg.active) activate();
+      else deactivate();
+    } else if (msg.type === "LAYOUT_LENS_CYCLE_UNIT") {
+      if (active) cycleUnit();
+    }
   });
 })();

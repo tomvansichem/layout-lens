@@ -26,6 +26,13 @@
         "mac": "Alt+S"
       },
       "description": "Toggle the Layout Lens inspector on the active tab"
+    },
+    "cycle-layout-lens-unit": {
+      "suggested_key": {
+        "default": "Alt+U",
+        "mac": "Alt+U"
+      },
+      "description": "Cycle the displayed unit: px → rem → em"
     }
   },
 

@@ -26,7 +26,8 @@ press the shortcut.
 
 ### Change the shortcut
 
-Default is **`Alt+S`**. Rebind at `chrome://extensions/shortcuts`.
+Defaults are **`Alt+S`** (toggle) and **`Alt+U`** (cycle unit). Rebind either at
+`chrome://extensions/shortcuts`.
 
 ---
 
@@ -41,6 +42,7 @@ Default is **`Alt+S`**. Rebind at `chrome://extensions/shortcuts`.
 | Move the mouse off that element | Releases keyboard navigation |
 | **`c`** | Copy the measurement block (selector + sizes + any warning) to the clipboard |
 | **`f`** | Freeze / unfreeze mouse tracking — pins the overlay so you can move the cursor to DevTools or another element |
+| **`Alt+U`** | Cycle the displayed unit: `px` → `rem` → `em` → `px`. Display only — measuring stays in pixels. Resets to `px` on reload |
 | **`Esc`** | Turn the inspector off |
 
 The page stays fully interactive while the inspector is on — clicks, hovers,
@@ -64,6 +66,10 @@ in a field.
   the mouse.
 - Matching sizes with nothing clipped stay quiet — just the green/orange
   overlays and the info tooltip.
+- **`Alt+U`** switches every printed number between `px`, `rem` (÷ the root
+  font-size), and `em` (÷ the hovered element's own font-size). A brief
+  `Unit: rem` label confirms the change; the underlying measuring never leaves
+  pixels.
 
 Priority when more than one applies: red (size mismatch) > amber (clip) >
 purple (keyboard nav).
@@ -83,7 +89,7 @@ value in those cases, so there's nothing to compare against. See
 | File | Role |
 | --- | --- |
 | `manifest.json` | MV3 manifest. Only permission: `activeTab`. Content script on `<all_urls>`, all frames. |
-| `background.js` | Service worker. Owns per-tab on/off state, broadcasts it to every frame, handles the `Alt+S` command and `Esc`. |
+| `background.js` | Service worker. Owns per-tab on/off state, broadcasts it to every frame, handles the `Alt+S` / `Alt+U` commands and `Esc`. |
 | `content.js` | The inspector. Inert until the worker sends `LAYOUT_LENS_SET`. |
 | `overlay.css` | Overlay styles, all scoped to `#layout-lens-root` (no effect until active). |
 | `icons/` | Generated PNGs — run `node tools/gen-icons.js` to rebuild. |
