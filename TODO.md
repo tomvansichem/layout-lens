@@ -11,7 +11,7 @@ if a decision changes — don't silently drift from it.
 ## Decisions already made (don't re-litigate these)
 
 - **License:** MIT. Copyright holder: `tomvansichem` (matches `git config
-  user.name`; the email on record is `tom@apert.be`).
+  user.name`).
 - **Version:** cutting a clean `1.0.0`, not staying on a beta label. Rationale:
   the smoke test (`test/smoke.mjs`) passes end-to-end, the service-worker
   eviction bug is fixed (`chrome.storage.session`), and the feature set held
