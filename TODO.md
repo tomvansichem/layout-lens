@@ -148,15 +148,71 @@ lists the store-zip exclusions (`assets/`, `test/`, `tools/`, `CLAUDE.md`,
 
 ## Task 5 — User-only actions (cannot be done from here)
 
+Prepared this session so each step below is paste-and-click:
+
+- [x] **Upload zip built and verified.** `layout-lens-1.0.0.zip`, 16 KB, ten
+      files: `manifest.json`, `background.js`, `content.js`, `overlay.css`,
+      `popup.html`, `icons/` (4 PNGs). Every path referenced by the manifest
+      resolves inside the zip, and the package makes no reference to any file
+      outside itself (no `getURL`, no `src=`, no `url()`, no inline script in
+      `popup.html`, so nothing to trip MV3's CSP). Rebuild command is in
+      "Rebuilding the upload zip" below.
+- [x] **All listing copy rewritten** through `.claude/skills/apert-quality` §1
+      and the `humanizer` skill, then stripped of em-dashes inside every
+      pasteable block per the user's call that they read as machine-written.
+      `README.md` and `PRIVACY.md` got the same pass. Beyond the dashes this
+      removed filler ("actually", "in order to", "at all"), a redundant "the
+      one thing it stores is a single...", and two short sentences that were
+      better merged.
+      **The `humanizer` skill is not a Claude Code skill** and will not appear
+      in `/reload-skills`, in `~/.claude/skills/`, or in this repo. It belongs
+      to the Claude desktop app, under `~/Library/Application Support/Claude/
+      local-agent-mode-sessions/skills-plugin/<uuid>/<uuid>/skills/humanizer/`.
+      Read its `SKILL.md` directly from that path; the uuid path segments
+      change between app sessions, so glob rather than hardcoding them.
+- [x] **`PRIVACY.md` written** at the repo root, to be linked as
+      `https://github.com/tomvansichem/layout-lens/blob/main/PRIVACY.md`. Its
+      contact line points at the Store listing's developer contact, because
+      Issues are disabled on this repo (publish-only lockdown) and the old
+      draft's `/issues` link was a dead end.
+- [x] **Icon decision: ship `icons/` as-is.** The 128px mark reads as a
+      deliberate diagram of the tool's own overlay (dark tile, orange margin
+      ring, green padding ring, light content square) rather than placeholder
+      art. `README.md`'s "polish before any Web Store listing" bullet has been
+      removed accordingly. The Store may still want a 440×280 promo tile;
+      that's optional and separate from the icon set.
+- [x] **`store-listing.md` now answers the host-access question.** The old copy
+      claimed "One permission: activeTab", which understated the statically
+      declared `<all_urls>` content script. There is now a justification block
+      for it, and the honest version of the claim in the description.
+
+Still user-only:
+
 - [ ] Register a Chrome Web Store Developer Dashboard account ($5 one-time fee).
-- [ ] Create the listing; paste in `store-listing.md`'s copy; upload the
-      screenshots from Task 3 and the existing `icons/` set (revisit icon
-      polish first if it still reads as "minimal generated art" — README used
-      to flag this explicitly).
-- [ ] Complete the Privacy Practices tab using Task 4's drafted justifications.
+- [ ] Push `PRIVACY.md` to `main` before pasting its URL into the Dashboard —
+      a blob URL on an unmerged branch will 404 for the reviewer.
+- [ ] Create the listing; paste in `store-listing.md`'s copy; upload
+      `layout-lens-1.0.0.zip` and the five screenshots from Task 3.
+- [ ] Complete the Privacy Practices tab from `store-listing.md`.
 - [ ] Submit for review.
 - [ ] Merge the release PR from Task 1 whenever ready — not gated on Store
       approval, but doing it after review feels safer than before.
+
+### Rebuilding the upload zip
+
+The Store wants a zip of the extension files only, with no wrapping directory.
+From a clean checkout:
+
+```sh
+rm -rf /tmp/ll-pkg && mkdir -p /tmp/ll-pkg
+cp manifest.json background.js content.js overlay.css popup.html /tmp/ll-pkg/
+cp -R icons /tmp/ll-pkg/
+cd /tmp/ll-pkg && find . -name .DS_Store -delete
+zip -rqX ~/Desktop/layout-lens-1.0.0.zip .
+```
+
+`-X` drops the macOS extra attributes; `find -delete` matters because a stray
+`.DS_Store` inside the zip is a rejection reason.
 
 ## Context notes for whoever resumes this
 
