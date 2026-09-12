@@ -112,36 +112,39 @@ if a decision changes — don't silently drift from it.
 - [x] Hand the PNGs to the user for a look before anything is uploaded
       anywhere — these are the first thing a stranger sees on the listing.
 
-## Task 4 — Store listing copy + Privacy Practices draft
+## Task 4 — Store listing copy + Privacy Practices draft — ✅ done
 
-Save all of this into one working file, e.g. `store-listing.md` at repo root
-(clearly a publishing artifact, not part of the shipped extension — exclude it
-from the store zip same as `assets/`, `test/`, `tools/`, `CLAUDE.md`,
-`TODO.md`, `.claude/`).
+All of it lives in `store-listing.md` at repo root, written to be pasted into
+the Dashboard field by field. Its own header names it a publishing artifact and
+lists the store-zip exclusions (`assets/`, `test/`, `tools/`, `CLAUDE.md`,
+`TODO.md`, `.claude/`, `.github/`, `LICENSE`, `README.md`, and itself).
 
-- [ ] Short description (≤132 chars, shows in search results).
-- [ ] Full listing description — adapt from `README.md`'s opening + "What you
-      see" section; the Store description can be longer and more marketing-ish
-      than the README, but shouldn't overclaim past what the tool verifiably
-      does.
-- [ ] Suggested category: Developer Tools.
-- [ ] Permission justifications for the Privacy Practices tab:
-      - `activeTab`: granted only on the user's own keyboard command; used
-        solely to message the content script that's already running in that
-        tab. No broader tab access.
-      - `storage`: used only for `chrome.storage.session`, to remember each
-        tab's on/off toggle across the extension's background worker being
-        evicted and restarted by Chrome. Memory-only, cleared when the browser
-        closes, never written to disk.
-- [ ] Data-collection disclosure answers: the honest answer to every category
-      Chrome asks about (personally identifiable info, health info, financial
-      info, authentication info, personal communications, location, web
-      history, user activity, website content) is **no** — nothing is
-      collected, transmitted, or stored beyond the one on/off boolean above.
-- [ ] Note whether a privacy-policy URL is required: with zero data collection
-      it likely isn't *legally* required, but check the Dashboard's current
-      requirements when actually filling this in — policy has shifted before
-      and may have shifted again.
+- [x] Short description: 115 chars, under the 132 limit. Two alternates kept
+      in the file rather than discarded — the choice between them is a taste
+      call that's cheaper to make while looking at the listing.
+- [x] Full listing description, adapted from `README.md`'s opening and "What
+      you see". Four flagged conditions, the key table, an explicit "what it
+      doesn't do", and the limitations stated in the listing itself rather than
+      left for a reviewer to find. Nothing claims behaviour the code lacks.
+- [x] Category: Developer Tools.
+- [x] Permission justifications for `activeTab` and `storage`, plus the
+      remote-code answer (no — no remote scripts, no eval, no deps).
+- [x] Data-collection disclosure: **no** to all nine categories, with a written
+      note on why "website content" is still no (computed styles are read in
+      the page, rendered to the overlay, discarded next frame; `c` writes to
+      the user's own clipboard on an explicit keypress).
+- [x] Screenshot captions, one per PNG, in listing order.
+- [x] Single-purpose statement.
+- [x] Privacy-policy question answered and **checked against Google's own docs
+      this session**, not from memory: the [User Data FAQ][t4faq] requires a
+      policy only for extensions that *handle user data*, so Layout Lens
+      arguably doesn't need one. Recommendation in the file is to publish one
+      anyway — it requests `storage`, and a reviewer who reads the permission
+      list before the justification is a cheap failure to avoid. A ready-to-use
+      `PRIVACY.md` draft is included. The file also says plainly that the
+      Dashboard is the authority and to re-check at fill-in time.
+
+[t4faq]: https://developer.chrome.com/docs/webstore/program-policies/user-data-faq
 
 ## Task 5 — User-only actions (cannot be done from here)
 
