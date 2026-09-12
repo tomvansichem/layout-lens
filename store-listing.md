@@ -5,9 +5,12 @@ part of the extension** — exclude it from the uploaded zip alongside `assets/`
 `test/`, `tools/`, `CLAUDE.md`, `TODO.md`, `.claude/`, `.github/`, `LICENSE`,
 `README.md`.
 
-Everything below is written to be pasted field-by-field. Nothing claims a
-behaviour the code doesn't have; if a line here stops being true, the code
-changed and this file is wrong.
+Everything in a fenced block below is pasted verbatim into a Dashboard field.
+Nothing in them claims a behaviour the code doesn't have; if a line stops being
+true, the code changed and this file is wrong.
+
+Copy was passed through `.claude/skills/apert-quality` §1. No em-dashes inside
+the pasted blocks (this prose around them is internal notes, different rules).
 
 ---
 
@@ -20,13 +23,13 @@ Layout Lens
 ## Short description (132 char limit)
 
 ```
-Hover an element to see its padding and margin — and what silently changed its size: transforms, clipping, min/max.
+Hover an element to see its padding and margin, and what silently changed its size: transforms, clipping, min/max.
 ```
 
-115 characters, well under the 132 limit. Two alternates:
+114 characters. Two alternates, if it reads long in the search result:
 
 ```
-Padding and margin on hover, plus the reason an element isn't the size its CSS says: transforms, clipping, min/max.
+Padding and margin on hover, plus why an element isn't the size its CSS says: transforms, clipping, min/max.
 ```
 
 ```
@@ -48,25 +51,24 @@ English (United States)
 ```
 Layout Lens answers one question on hover: why is this element the size it is?
 
-It draws the padding and margin overlay you already know, then goes further on
-the sizing question itself — it names the reasons an element's rendered size
-disagrees with the CSS you wrote.
+It draws the padding and margin overlay, then names the reasons the rendered
+size disagrees with the CSS you wrote.
 
 WHAT IT FLAGS
 
-• Size mismatch (red) — the CSS box size and the painted size disagree. A CSS
+• Size mismatch (red). The CSS box size and the painted size disagree. A CSS
   transform on the element or an ancestor is the usual cause, and the tooltip
   names which ancestor.
 
-• Clipped content (amber) — overflow: hidden or clip is cutting content off
-  with no scrollbar to reach it, including text-overflow: ellipsis truncation.
-  Scrollable containers are deliberately not flagged; that content isn't lost.
+• Clipped content (amber). overflow: hidden or clip is cutting content off with
+  no scrollbar to reach it, including text-overflow: ellipsis truncation.
+  Scrollable containers are not flagged; that content isn't lost.
 
-• Width or height pinned by min-/max- (info line) — the element is sized by
+• Width or height pinned by min- or max- (info line). The element is sized by
   min-width, max-width, min-height or max-height rather than by width or
   height. Computed style can't show you this; it reports the clamped result.
 
-• Wider than the viewport (info line) — the element's own box runs past the
+• Wider than the viewport (info line). The element's own box runs past the
   page, a common source of an unwanted horizontal scrollbar.
 
 HOW IT WORKS
@@ -74,36 +76,38 @@ HOW IT WORKS
 Alt+S          toggle the inspector on the current tab, all frames
 mouse          measure the element under the cursor
 ↑ / ↓          walk to the parent, then back down toward where you started
-f              pin an element — the overlay keeps tracking it through scroll,
-               so you can scroll away and compare, or move to DevTools
+f              pin an element. The overlay keeps tracking it through scroll,
+               so you can scroll away to compare, or move to DevTools
 c              copy the measurement block to the clipboard
 Alt+U          cycle the displayed unit: px → rem → em
 Esc            off
 
 Shortcuts are rebindable at chrome://extensions/shortcuts.
 
-The page stays fully interactive the whole time — clicks, hovers and scrolling
-all work. Only ↑ / ↓ / c / f are intercepted, and never while you're typing in
-a field.
+The page stays fully interactive throughout. Clicks, hovers and scrolling all
+work. Only ↑ / ↓ / c / f are intercepted, and never while you're typing in a
+field.
 
 WHAT IT DOESN'T DO
 
-No account, no options page, no settings. It does nothing at all until you
-press the shortcut, and leaves no trace on the page when you turn it off.
+No account, no options page, no settings. It does nothing until you press the
+shortcut, and leaves no trace on the page when you turn it off.
 
-It collects nothing. It sends nothing anywhere. The single thing it stores is
-one on/off flag per tab, held in memory only so the toggle survives Chrome
-evicting the extension's idle worker — cleared when you close the browser,
+It collects nothing. It sends nothing anywhere. It stores one value: an on/off
+flag per tab, held in memory so the toggle survives Chrome evicting the
+extension's idle worker. That flag is cleared when you close the browser and
 never written to disk.
 
-One permission: activeTab, granted only by your own keypress.
+Its content script is declared on all sites because it has to already be
+running in the tab at the moment you press the shortcut, and it stays inert
+until then. The only API permissions requested are activeTab and storage.
 
-LIMITATIONS, STATED UP FRONT
+LIMITATIONS
 
 ↑ / ↓ walk one frame's DOM and can't cross an iframe boundary. The size check
-fires on transforms; it does not fire on flex-shrink or zoom, because Chrome's
-computed style already reports the used value in those cases — there's nothing
-left to compare. min/max clamping is named by its own info line instead.
+fires on transforms. It does not fire on flex-shrink or zoom, because Chrome's
+computed style already reports the used value in those cases, leaving nothing
+to compare. min and max clamping is named by its own info line instead.
 
 Source: https://github.com/tomvansichem/layout-lens
 ```
@@ -118,13 +122,12 @@ the real overlay. Captions, if the Dashboard asks for them:
 | File | Caption |
 | --- | --- |
 | `1-padding-margin.png` | Padding in green, margin in orange, measured on hover |
-| `2-size-mismatch.png` | Rendered size disagrees with the CSS — the transformed ancestor is named |
+| `2-size-mismatch.png` | Rendered size disagrees with the CSS, and the transformed ancestor is named |
 | `3-clipped-content.png` | Content clipped out of view with no scrollbar to reach it |
 | `4-min-width-clamp.png` | Width pinned by min-width, not by width |
-| `5-viewport-overflow.png` | An element wider than the viewport — horizontal scroll, explained |
+| `5-viewport-overflow.png` | An element wider than the viewport, the cause of the horizontal scrollbar |
 
-Icons for the listing come from `icons/` (16/32/48/128). See Task 5 in
-`TODO.md` — decide whether they need polish before upload.
+Icons for the listing come from `icons/` (16/32/48/128).
 
 ---
 
@@ -146,20 +149,36 @@ specifies.
 ```
 Granted only when the user presses the extension's own keyboard shortcut. It
 is used for exactly one thing: sending a message to the content script already
-running in that tab to turn the overlay on or off. The extension does not read
-tab URLs, titles, history, or the contents of any other tab, and requests no
-host permissions.
+running in that tab, to turn the overlay on or off. The extension does not read
+tab URLs, titles, or history, does not touch any other tab, and declares no
+host_permissions.
 ```
 
 **`storage`**
 
 ```
 Used only for chrome.storage.session, which is memory-only. It holds one
-boolean per tab — whether the inspector is on — so the toggle stays correct
-when Chrome evicts and restarts the extension's idle background worker.
-Without it, the first keypress after an eviction is lost. Nothing is written
-to chrome.storage.local or chrome.storage.sync, nothing is written to disk,
+boolean per tab, recording whether the inspector is on, so the toggle stays
+correct when Chrome evicts and restarts the extension's idle background
+worker. Without it, the first keypress after an eviction is lost. Nothing is
+written to chrome.storage.local or chrome.storage.sync, nothing reaches disk,
 and everything is cleared when the browser closes.
+```
+
+**Content script host access (`<all_urls>`)** — if the Dashboard asks for this
+separately from `activeTab`:
+
+```
+The content script is declared statically on all URLs and all frames because
+it must already be running in the page at the moment the user presses the
+shortcut, in every frame at once. The extension declares no host_permissions
+and does not request the scripting permission.
+
+Until the background worker sends it an activation message, the script
+registers exactly one listener, chrome.runtime.onMessage, and does nothing
+else: no page event listeners, no reads of page content, no DOM created. On
+activation it adds three listeners on the page and builds one overlay
+container. Switching it off removes all of them and leaves no node behind.
 ```
 
 **Remote code**
@@ -214,59 +233,12 @@ policy costs nothing and removes the question.
 
 [faq]: https://developer.chrome.com/docs/webstore/program-policies/user-data-faq
 
-**Verify against the Dashboard when you actually fill this in.** This
+**Verify against the Dashboard when you fill this in.** This
 requirement has moved before and the SEO-farm answers on it contradict each
 other and the official docs. The Dashboard field is the authority.
 
-Draft, if you want it — publish as `PRIVACY.md` in the repo and link the
-GitHub URL:
+Published as `PRIVACY.md` at the repo root. Link:
 
-```markdown
-# Privacy Policy — Layout Lens
-
-Last updated: 2026-09-12
-
-Layout Lens collects no data.
-
-It does not transmit anything to any server. It has no analytics, no
-telemetry, no crash reporting, no account, and makes no network requests of
-any kind.
-
-## What it stores
-
-One value: a true/false flag per browser tab recording whether the inspector
-is switched on. It is held in `chrome.storage.session`, which exists only in
-memory, is never written to disk, and is cleared when you close Chrome.
-
-Nothing else is stored.
-
-## What it reads
-
-While the inspector is active, the extension reads the position, size, and
-computed CSS of the element under your cursor, in order to draw the overlay.
-Those values stay in the page, are replaced on the next frame, and are never
-saved or sent anywhere.
-
-Pressing `c` copies the current measurement to your clipboard. That is the
-only thing the extension ever writes outside its own overlay, and it happens
-only on that keypress.
-
-## Permissions
-
-- `activeTab` — granted only when you press the extension's shortcut. Used to
-  message the content script in that tab. No other tab is accessed.
-- `storage` — used only for the session flag described above.
-
-## Contact
-
-Issues: https://github.com/tomvansichem/layout-lens/issues
 ```
-
----
-
-## Remaining unknowns for Task 5
-
-- Whether the Dashboard still accepts a plain GitHub-rendered Markdown URL as a
-  privacy policy link, or now wants a dedicated page.
-- Whether the icons pass review as-is (`README.md` used to flag them as
-  minimal generated art).
+https://github.com/tomvansichem/layout-lens/blob/main/PRIVACY.md
+```

@@ -431,7 +431,7 @@
     if (copiedAt && Date.now() - copiedAt < 900) line("✓ copied", "ll-tip-ok");
 
     let hint;
-    if (frozen) hint = "📌 pinned — scroll to compare · f release · c copy · ↑ ↓ navigate";
+    if (frozen) hint = "📌 pinned · scroll to compare · f release · c copy · ↑ ↓ navigate";
     else if (lockedEl) hint = "↑ parent  ↓ child · move mouse to release · c copy";
     else hint = "↑ parent · c copy · f pin";
     line(hint, "ll-tip-hint");
