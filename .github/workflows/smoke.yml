@@ -1,0 +1,43 @@
+# Runs test/smoke.mjs against a real headless Chrome.
+#
+# The Chrome version is pinned on purpose, twice over. Stable-channel Chrome
+# silently ignores --load-extension, so this needs a Chrome for Testing build —
+# and not every Chrome for Testing build works either: 153.0.8010.36 loads the
+# extension fine but never injects the content script into any page. Before
+# changing CHROME_VERSION, point CHROME_PATH at the candidate build locally and
+# confirm `node test/smoke.mjs` goes green. Never resolve this to "latest".
+name: smoke
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CHROME_VERSION: 152.0.7977.82
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22 # smoke.mjs uses global WebSocket, unflagged since 22
+
+      # Ubuntu 24.04 blocks unprivileged user namespaces via AppArmor, which is
+      # exactly what Chrome's sandbox needs to start. Without this, Chrome dies
+      # on launch before the debugger port opens.
+      - name: Unblock Chrome's sandbox
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+      - name: Download Chrome for Testing
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/chrome.zip" \
+            "https://storage.googleapis.com/chrome-for-testing-public/$CHROME_VERSION/linux64/chrome-linux64.zip"
+          unzip -q "$RUNNER_TEMP/chrome.zip" -d "$RUNNER_TEMP"
+          echo "CHROME_PATH=$RUNNER_TEMP/chrome-linux64/chrome" >> "$GITHUB_ENV"
+
+      - run: node test/smoke.mjs

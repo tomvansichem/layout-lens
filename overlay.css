@@ -174,3 +174,23 @@
   color: #6b7280 !important;
   margin-top: 4px !important;
 }
+
+/* Transient unit indicator — shown for ~1s when Alt+U cycles the display unit.
+   JS sets only `opacity` inline (1 on change, 0 after the timer); the fade is
+   the one transition in this file, opacity-only and under 0.25s. Reuses the
+   tooltip's colours — no new palette entry. */
+#layout-lens-root .ll-unit {
+  position: absolute !important;
+  left: 50% !important;
+  bottom: 24px !important;
+  transform: translateX(-50%) !important;
+  font-size: 11px !important;
+  letter-spacing: 0.03em !important;
+  color: #e9e9e9 !important;
+  background: rgba(18, 18, 20, 0.96) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border-radius: 5px !important;
+  padding: 4px 10px !important;
+  opacity: 0;
+  transition: opacity 0.2s ease !important;
+}

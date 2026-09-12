@@ -1,0 +1,67 @@
+<!--
+  Layout Lens — toolbar popup.
+
+  Purely static help. No script, no options, no state — clicking the toolbar
+  icon exists only so the shortcuts are discoverable; the extension is still
+  shortcut-activated only. Don't add logic here without updating CLAUDE.md's
+  "Hard constraints" section, which calls this out on purpose.
+-->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Layout Lens</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0;
+    width: 260px;
+    padding: 14px 16px;
+    background: #131315;
+    color: #e9e9e9;
+    font: 12px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  h1 {
+    font-size: 13px;
+    margin: 0 0 10px;
+    color: #fff;
+  }
+  .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin: 6px 0;
+  }
+  kbd {
+    font: 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: rgba(255, 255, 255, 0.09);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 3px;
+    padding: 1px 6px;
+    white-space: nowrap;
+  }
+  p.rebind {
+    margin: 12px 0 0;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    color: #8a8f98;
+    font-size: 11px;
+  }
+  code {
+    font: 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: #b9c2cc;
+  }
+</style>
+</head>
+<body>
+  <h1>Layout Lens</h1>
+  <div class="row"><span>Toggle inspector</span><kbd>Alt + S</kbd></div>
+  <div class="row"><span>Cycle unit (px / rem / em)</span><kbd>Alt + U</kbd></div>
+  <div class="row"><span>Pin the current element</span><kbd>f</kbd></div>
+  <div class="row"><span>Copy the measurement</span><kbd>c</kbd></div>
+  <div class="row"><span>Walk to parent / child</span><kbd>↑ / ↓</kbd></div>
+  <div class="row"><span>Turn off</span><kbd>Esc</kbd></div>
+  <p class="rebind">Rebind at <code>chrome://extensions/shortcuts</code></p>
+</body>
+</html>

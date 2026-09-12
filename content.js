@@ -30,14 +30,25 @@
   let mouseX = 0;
   let mouseY = 0;
 
+  // Display unit for every measurement the overlay prints. The measuring stays
+  // in CSS pixels throughout — this only converts numbers at render time. Alt+U
+  // cycles it; it resets to "px" on reload or on deactivate. No storage.
+  const UNITS = ["px", "rem", "em"];
+  let unit = "px";
+  let unitScale = 1; // px per `unit`; recomputed each frame in render()
+  let unitToastTimer = 0;
+
   // DOM-tree navigation. While `lockedEl` is set, the mouse no longer picks the
   // target — ArrowUp/ArrowDown walk the ancestor chain instead. `originEl` is
   // the deepest element we started from, so ArrowDown can retrace the descent.
   let lockedEl = null;
   let originEl = null;
 
-  // `f` freezes mouse tracking so you can move the cursor away (to DevTools, or
-  // to compare elements) without the overlay following.
+  // `f` pins the current element: mouse tracking stops (move the cursor to
+  // DevTools, or toward another element to eyeball it) but the rAF loop keeps
+  // re-reading the pinned element's rect, so it still tracks scroll, resize,
+  // and layout animation — useful for comparing it against something further
+  // down the page.
   let frozen = false;
 
   // `c` copies the measurement block. `lastReport` is rebuilt every render;
@@ -52,6 +63,7 @@
   let outline = null;
   let labelLayer = null;
   let tip = null;
+  let unitToast = null; // transient "Unit: rem" label, shown ~1s on Alt+U
 
   // ---- Small helpers -----------------------------------------------------
   const max0 = (n) => (n > 0 ? n : 0);
@@ -62,7 +74,14 @@
     return Number.isInteger(v) ? String(v) : v.toFixed(1);
   };
 
-  const fmtDelta = (d) => (d > 0 ? "+" : "-") + r(Math.abs(d)) + "px";
+  // Format a px measurement in the active display unit. px keeps the form above;
+  // rem/em divide by `unitScale` and round to 2 decimals — the ×100/100 also
+  // clears floating-point noise like 1.4999999. Trailing zeros fall off via
+  // String coercion (1.5, not 1.50).
+  const fmtLen = (px) =>
+    unit === "px" ? r(px) + "px" : Math.round((px / unitScale) * 100) / 100 + unit;
+
+  const fmtDelta = (d) => (d > 0 ? "+" : "-") + fmtLen(Math.abs(d));
 
   // A full CSS-ish label for an element: tag#id.class.class
   function describe(el) {
@@ -91,9 +110,10 @@
     outline = div("ll-box ll-outline");
     labelLayer = div("ll-labels");
     tip = div("ll-tip");
+    unitToast = div("ll-unit");
 
     // Order matters for stacking: margin behind padding behind outline.
-    root.append(marginBox, paddingBox, outline, labelLayer, tip);
+    root.append(marginBox, paddingBox, outline, labelLayer, tip, unitToast);
 
     // documentElement is always present, even on bare file:// or XML pages.
     document.documentElement.appendChild(root);
@@ -161,10 +181,31 @@
       ? borderBox ? hRaw : hRaw + m.pt + m.pb + m.bt + m.bb
       : null;
 
+    // Which axis, if any, is pinned by an explicit min-/max-width|height rather
+    // than by `width`/`height` (or intrinsic/flex sizing). The mismatch check
+    // above can't see this: clamping resolves before computed style is read,
+    // so cssW/cssH already reflect the clamped value and there's nothing left
+    // to compare against. This is a separate, honest "why is it this size"
+    // signal — an info line, not a warning, so it's independent of `mismatch`.
+    const clampAxis = (raw, minRaw, maxRaw, axisLabel) => {
+      const max = parseFloat(maxRaw);
+      if (Number.isFinite(max) && Math.abs(raw - max) < 0.5) return { via: `max-${axisLabel}`, px: max };
+      const min = parseFloat(minRaw);
+      if (Number.isFinite(min) && min > 0 && Math.abs(raw - min) < 0.5) return { via: `min-${axisLabel}`, px: min };
+      return null;
+    };
+    m.clampW = Number.isFinite(wRaw) ? clampAxis(wRaw, cs.minWidth, cs.maxWidth, "width") : null;
+    m.clampH = Number.isFinite(hRaw) ? clampAxis(hRaw, cs.minHeight, cs.maxHeight, "height") : null;
+
     // Overflow mode per axis — used by the clip check in render(). The live
     // scrollWidth/clientWidth numbers are read there, per frame.
     m.ovX = cs.overflowX;
     m.ovY = cs.overflowY;
+
+    // This element's own font-size, the divisor for `em` display. Cached with
+    // the rest — it only changes when the target changes. (`rem` divides by the
+    // root font-size instead, read fresh each frame.)
+    m.fontPx = n(cs.fontSize);
 
     // Where a transform lives, if any — the usual reason cssW/cssH and the
     // rendered rect disagree. Surfaced in the tooltip only when there's an
@@ -204,6 +245,14 @@
     const scrollH = el.scrollHeight;
     const clientH = el.clientHeight;
     const m = metrics;
+
+    // px per display unit. `rem` reads the root font-size fresh here so a page
+    // that overrides <html> font-size is respected; `em` uses the target's own
+    // cached font-size. The `|| 16` is only a floor for an unparseable value.
+    unitScale =
+      unit === "rem" ? parseFloat(getComputedStyle(document.documentElement).fontSize) || 16 :
+      unit === "em" ? m.fontPx || 16 :
+      1;
 
     // Margin ring: box grows outward from the border-box by the margins;
     // the margin values live in this box's border.
@@ -253,8 +302,16 @@
         }
       : null;
 
+    // ---- Viewport-overflow check: does this element's own box extend past
+    // where the page should end? A different question from the clip check
+    // above (that's the element's content vs its own box; this is the
+    // element's box vs the page) — computed live because scroll position
+    // changes every frame the check would otherwise miss it.
+    const overflowPx = R.right + window.scrollX - document.documentElement.clientWidth;
+    const vpOverflow = overflowPx > 0.5 ? overflowPx : null;
+
     renderLabels(R, m, px, py, pw, ph);
-    renderTip(el, m, vw, vh, dW, dH, mismatch, clip);
+    renderTip(el, m, vw, vh, dW, dH, mismatch, clip, vpOverflow);
     positionTip();
   }
 
@@ -266,7 +323,7 @@
       if (value <= 0.5) return;
       const d = document.createElement("div");
       d.className = "ll-label " + kind;
-      d.textContent = r(value) + "px";
+      d.textContent = fmtLen(value);
       d.style.left = x + "px";
       d.style.top = y + "px";
       labelLayer.appendChild(d);
@@ -289,10 +346,12 @@
   }
 
   // Cursor-following info box: ancestor breadcrumb, a prominent element label,
-  // sibling position, CSS vs Visual size, and — only when something is off —
-  // the per-axis size variance, transform cause, and/or clipped-content lines.
+  // sibling position, CSS vs Visual size, a min-/max-width|height clamp line
+  // when one applies (independent of mismatch — see clampAxis above), and —
+  // only when something is off — the per-axis size variance, transform cause,
+  // clipped-content, and/or viewport-overflow lines.
   // Lines marked `report: true` also feed the clipboard copy (`c`).
-  function renderTip(el, m, vw, vh, dW, dH, mismatch, clip) {
+  function renderTip(el, m, vw, vh, dW, dH, mismatch, clip, vpOverflow) {
     tip.replaceChildren();
 
     const report = [];
@@ -321,22 +380,27 @@
       ? `child ${Array.prototype.indexOf.call(p.children, el) + 1} of ${p.children.length}`
       : "root element";
     const tags = [];
-    if (frozen) tags.push("FROZEN");
+    if (frozen) tags.push("PINNED");
     if (lockedEl) tags.push("LOCKED");
     line(
       tags.length ? `${pos}   ·   ${tags.join("  ·  ")}` : pos,
       "ll-tip-meta" + (tags.length ? " ll-tip-locked" : "")
     );
 
-    const cssStr = m.cssW == null ? "CSS n/a" : `CSS ${r(m.cssW)}×${r(m.cssH)}`;
-    line(`${cssStr}  |  Visual ${r(vw)}×${r(vh)}`, null, true);
+    const cssStr = m.cssW == null ? "CSS n/a" : `CSS ${fmtLen(m.cssW)}×${fmtLen(m.cssH)}`;
+    line(`${cssStr}  |  Visual ${fmtLen(vw)}×${fmtLen(vh)}`, null, true);
+
+    // Clamp lines are informational, not a warning — shown independent of
+    // `mismatch` since this is precisely the case the size check can't catch.
+    if (m.clampW) line(`↳ width pinned by ${m.clampW.via} (${fmtLen(m.clampW.px)}), not width`, "ll-clipwarn", true);
+    if (m.clampH) line(`↳ height pinned by ${m.clampH.via} (${fmtLen(m.clampH.px)}), not height`, "ll-clipwarn", true);
 
     if (mismatch) {
       if (Math.abs(dW) > 0.5) {
-        line(`W  CSS ${r(m.cssW)}px → Visual ${r(vw)}px  (${fmtDelta(dW)})`, "ll-warn", true);
+        line(`W  CSS ${fmtLen(m.cssW)} → Visual ${fmtLen(vw)}  (${fmtDelta(dW)})`, "ll-warn", true);
       }
       if (Math.abs(dH) > 0.5) {
-        line(`H  CSS ${r(m.cssH)}px → Visual ${r(vh)}px  (${fmtDelta(dH)})`, "ll-warn", true);
+        line(`H  CSS ${fmtLen(m.cssH)} → Visual ${fmtLen(vh)}  (${fmtDelta(dH)})`, "ll-warn", true);
       }
       if (m.xform) line(`↳ ${m.xform}`, "ll-warn", true);
     }
@@ -358,14 +422,18 @@
       }
     }
 
+    if (vpOverflow != null) {
+      line(`↔ ${fmtLen(vpOverflow)} wider than the viewport — likely cause of horizontal scroll`, "ll-clipwarn", true);
+    }
+
     lastReport = report.join("\n");
 
     if (copiedAt && Date.now() - copiedAt < 900) line("✓ copied", "ll-tip-ok");
 
     let hint;
-    if (frozen) hint = "❄ frozen — f release · c copy · ↑ ↓ navigate";
+    if (frozen) hint = "📌 pinned · scroll to compare · f release · c copy · ↑ ↓ navigate";
     else if (lockedEl) hint = "↑ parent  ↓ child · move mouse to release · c copy";
-    else hint = "↑ parent · c copy · f freeze";
+    else hint = "↑ parent · c copy · f pin";
     line(hint, "ll-tip-hint");
   }
 
@@ -474,6 +542,20 @@
     // On unfreeze, don't retarget from the stale cursor position — the next
     // real mousemove picks the element under the pointer. If the mouse stays
     // put, keeping the current target shown is the intuitive result.
+    ensureLoop();
+  }
+
+  // Alt+U — step the display unit px → rem → em → px. Flash the choice for ~1s
+  // so there's feedback without a permanent readout, then let the running rAF
+  // loop repaint labels and tip in the new unit.
+  function cycleUnit() {
+    unit = UNITS[(UNITS.indexOf(unit) + 1) % UNITS.length];
+    unitToast.textContent = "Unit: " + unit;
+    unitToast.style.opacity = "1";
+    clearTimeout(unitToastTimer);
+    unitToastTimer = setTimeout(() => {
+      unitToast.style.opacity = "0";
+    }, 1000);
     ensureLoop();
   }
 
@@ -605,13 +687,17 @@
     window.removeEventListener("keydown", onKeyDown, true);
     if (rafId) cancelAnimationFrame(rafId);
     rafId = 0;
+    clearTimeout(unitToastTimer);
+    unitToastTimer = 0;
     if (root) root.remove();
-    root = marginBox = paddingBox = outline = labelLayer = tip = null;
+    root = marginBox = paddingBox = outline = labelLayer = tip = unitToast = null;
     currentEl = null;
     metrics = null;
     lockedEl = null;
     originEl = null;
     frozen = false;
+    unit = "px"; // resets with the tool — no unit persists across a toggle
+    unitScale = 1;
     lastReport = "";
     copiedAt = 0;
   }
@@ -620,8 +706,12 @@
   // The worker owns the on/off state and pushes it here. activate() and
   // deactivate() are both idempotent, so a redundant SET is harmless.
   chrome.runtime.onMessage.addListener((msg) => {
-    if (!msg || msg.type !== "LAYOUT_LENS_SET") return;
-    if (msg.active) activate();
-    else deactivate();
+    if (!msg) return;
+    if (msg.type === "LAYOUT_LENS_SET") {
+      if (msg.active) activate();
+      else deactivate();
+    } else if (msg.type === "LAYOUT_LENS_CYCLE_UNIT") {
+      if (active) cycleUnit();
+    }
   });
 })();
