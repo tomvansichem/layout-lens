@@ -57,23 +57,30 @@ if a decision changes — don't silently drift from it.
       and a callback to the container-query-awareness rejection.
 - [x] Did not merge — left for review, as decided.
 
-## Task 2 — CI: run the smoke test on every push
+## Task 2 — CI: run the smoke test on every push — ✅ done
 
-- [ ] Add `.github/workflows/smoke.yml`.
-- [ ] Steps: checkout → download **Chrome for Testing 152.0.7977.82** pinned
-      by exact version (`https://storage.googleapis.com/chrome-for-testing-public/152.0.7977.82/linux64/chrome-linux64.zip`
-      for a standard `ubuntu-latest` runner) → set `CHROME_PATH` to the
-      extracted binary → `node test/smoke.mjs`. Do not use the
-      `last-known-good-versions.json` endpoint to fetch "whatever is current" —
-      see the decision above on why that's unsafe.
-- [ ] If this pinned version ever needs bumping (e.g. it's pulled from
-      storage), re-verify locally with `CHROME_PATH` pointed at the candidate
-      build before changing CI — confirm `node test/smoke.mjs` actually goes
-      green, don't assume a newer build works.
-- [ ] Trigger on push and PR to `main`.
-- [ ] Actually push and confirm the Actions run goes green on GitHub — a
-      workflow file that's never been run is not verified, don't mark this
-      done on the strength of it "looking right."
+- [x] Added `.github/workflows/smoke.yml`.
+- [x] Steps: checkout → Node 22 → download **Chrome for Testing 152.0.7977.82**
+      pinned by exact version → set `CHROME_PATH` to the extracted binary →
+      `node test/smoke.mjs`. The version is a literal in the workflow's `env`;
+      the `last-known-good-versions.json` endpoint is deliberately not used.
+- [x] The "re-verify before bumping" instruction now lives in the workflow's own
+      header comment, where whoever edits `CHROME_VERSION` will read it.
+- [x] Triggers on push to `main` and PRs targeting `main`. No trigger on pushes
+      to feature branches — a PR branch would otherwise run twice per push.
+- [x] **One fix was needed to get it green.** Ubuntu 24.04 blocks unprivileged
+      user namespaces via AppArmor, which is what Chrome's sandbox needs to
+      start; Chrome died on launch before the debugger port opened. The workflow
+      now runs `sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0`
+      before Chrome. `--no-sandbox` would also have worked, but it's a flag
+      inside `smoke.mjs`'s hardcoded argv, and weakening the sandbox for every
+      local run to fix one CI kernel is the wrong trade.
+- [x] Same commit: `waitForDevtoolsUrl`'s early-exit error now includes the
+      signal and Chrome's captured stderr. It previously reported only
+      `Chrome exited early (code null)`, which is indistinguishable between a
+      refused sandbox, a bad binary, and a missing shared library.
+- [x] Confirmed green on GitHub: run `34719254704` on `feat/unit-toggle`, all
+      15 checks passing, `PASS — 0 failing check(s)`.
 
 ## Task 3 — Screenshots for the store listing
 
