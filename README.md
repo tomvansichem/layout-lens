@@ -112,7 +112,9 @@ red check. See `test/testbed.html` for a worked example of every case.
 | `icons/` | Generated PNGs — run `node tools/gen-icons.js` to rebuild. |
 | `tools/gen-icons.js` | Dependency-free icon generator. |
 | `test/testbed.html` | Every case in this README, laid out for hovering. |
-| `test/smoke.mjs` | Dependency-free smoke test — drives a real Chrome over the DevTools Protocol. `node test/smoke.mjs`. |
+| `test/harness.mjs` | Dependency-free CDP harness — launches Chrome with the extension loaded and the testbed open. |
+| `test/smoke.mjs` | Smoke test over that harness. `node test/smoke.mjs`. |
+| `test/screenshots.mjs` | Captures the store screenshots from the real overlay. `node test/screenshots.mjs`. |
 
 No build step. Plain JS. Nothing to install.
 

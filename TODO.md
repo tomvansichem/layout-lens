@@ -82,21 +82,34 @@ if a decision changes — don't silently drift from it.
 - [x] Confirmed green on GitHub: run `34719254704` on `feat/unit-toggle`, all
       15 checks passing, `PASS — 0 failing check(s)`.
 
-## Task 3 — Screenshots for the store listing
+## Task 3 — Screenshots for the store listing — ✅ done
 
-- [ ] Reuse the CDP client already in `test/smoke.mjs` — either extend that
-      file or add `test/screenshots.mjs` that imports/duplicates the small
-      `CDP` class.
-- [ ] Set a real viewport before capturing (`Emulation.setDeviceMetricsOverride`
-      or a fixed `--window-size`) — Chrome Web Store wants 1280×800 or 640×400.
-- [ ] Capture at least: B1 (red mismatch + `↳ transform on this element`), B11
-      (amber clip), B9 (the new `↳ width pinned by min-width…` advisory), D1
-      (the new `↔ …px wider than the viewport…` advisory). Four is plenty; the
-      Store allows up to 5.
-- [ ] Use `Page.captureScreenshot` (returns base64 PNG) and write the files to
-      a local `assets/screenshots/` directory (not shipped in the extension
-      package — add it to whatever the eventual store-zip step excludes).
-- [ ] Hand the PNGs to the user for a look before anything is uploaded
+- [x] Extracted the Chrome-wrangling out of `test/smoke.mjs` into
+      `test/harness.mjs` (`CDP`, `waitFor`, the testbed http server, and
+      `startInspector()` — Chrome up, extension loaded, testbed open, inspector
+      on, plus its `close()`). `smoke.mjs` is now its checks and nothing else;
+      `test/screenshots.mjs` imports the same harness. Duplicating ~150 lines
+      was the alternative and it would have drifted.
+- [x] `Emulation.setDeviceMetricsOverride` at 1280×800, `deviceScaleFactor: 1`
+      (plus `--window-size`), and `Emulation.setEmulatedMedia` forcing
+      `prefers-color-scheme: light` — `testbed.html` is theme-aware and the
+      machine running the capture shouldn't decide what the listing looks like.
+      Each PNG's own IHDR is checked before it's written; an image that came
+      back at the host's pixel ratio would otherwise only fail at upload.
+- [x] Five shots, in listing order: A1 padding/margin rings (the tool's
+      everyday state — worth the hero slot, and the Store allows 5), B1 red
+      mismatch + cause, B11 amber clip, B9 clamp advisory, D1 viewport-overflow
+      advisory. A1 needed an `id="fx-padding"` in `testbed.html`.
+- [x] Written to `assets/screenshots/` — already on Task 4's exclusion list.
+- [x] **Two bugs the first run shipped silently, both now fixed and guarded.**
+      Real hit-testing (`Input.dispatchMouseEvent`, unlike smoke.mjs's synthetic
+      dispatch) put the cursor at B11's centre, which is B11's *child* — a
+      perfectly plausible screenshot measuring the wrong element, no warning
+      shown. Each capture now asserts the tooltip's selector line names the
+      fixture. And `scrollIntoView` on D1 left the page scrolled sideways, which
+      read as a broken layout; the script now resets `scrollLeft` so D1 visibly
+      runs off the right edge instead.
+- [x] Hand the PNGs to the user for a look before anything is uploaded
       anywhere — these are the first thing a stranger sees on the listing.
 
 ## Task 4 — Store listing copy + Privacy Practices draft
@@ -144,7 +157,7 @@ from the store zip same as `assets/`, `test/`, `tools/`, `CLAUDE.md`,
 
 ## Context notes for whoever resumes this
 
-- `test/smoke.mjs`'s header comment and `CLAUDE.md` Gotcha #5 both explain the
+- `test/harness.mjs`'s header comment and `CLAUDE.md` Gotcha #5 both explain the
   Chrome-for-Testing requirement in detail — read one of those before
   reinventing that investigation.
 - The container-query-awareness feature was discussed and deliberately

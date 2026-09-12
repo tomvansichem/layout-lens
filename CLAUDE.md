@@ -160,10 +160,10 @@ tab close and on `status === "loading"`.
 5. **Stable-channel Chrome silently ignores `--load-extension`.** Confirmed on
    Chrome 152: no error, the extension just never registers — verified with a
    trivial, unrelated MV3 extension, so it's not specific to this repo. Only
-   matters for `test/smoke.mjs`; doesn't affect real usage (users load via
+   matters for `test/harness.mjs`; doesn't affect real usage (users load via
    "Load unpacked" through the UI, which is unaffected). A "Chrome for Testing"
    build doesn't have the restriction — see the comment at the top of
-   `test/smoke.mjs`.
+   `test/harness.mjs`.
 6. **Not every Chrome for Testing build actually works either.** 152.0.7977.82
    passes the full smoke test; 153.0.8010.36 loads the extension (manifest
    readable, service worker starts) but never injects the content script into
@@ -214,7 +214,28 @@ match `overlay.css` (`#f6b26b`, `#87c882`).
   effect on the **first** press, not the second.
 - Full matrix: open `test/testbed.html` (also the `file://` check).
 - `node test/smoke.mjs` (needs `CHROME_PATH` pointed at a Chrome for Testing
-  build — see the file's header comment) for the automated subset of the above.
+  build — see `test/harness.mjs`'s header comment) for the automated subset of
+  the above.
+
+## Store screenshots
+
+```
+node test/screenshots.mjs
+```
+
+Same harness as the smoke test (`test/harness.mjs`: Chrome up, extension
+loaded, testbed served, inspector on), a 1280×800 emulated viewport, and a
+forced light scheme so the host machine's theme doesn't decide what the listing
+looks like. Writes five PNGs to `assets/screenshots/` — a publishing artifact,
+not part of the extension package.
+
+Unlike the smoke test, this hovers via `Input.dispatchMouseEvent`, so it goes
+through real hit-testing: the cursor lands just inside a fixture's bottom-right
+corner, which is both clear of the per-side labels (they sit at edge middles)
+and, for B11, the one part of the box its child doesn't cover. Each capture
+asserts the tooltip names the intended fixture — hovering a child silently
+produces a plausible-looking screenshot of the wrong element, which is exactly
+what happened on the first run.
 
 ## Deferred / not done
 
