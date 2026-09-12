@@ -41,6 +41,7 @@
   .badge.clip { background: #ffe3b0; color: #8a5512; }
   .badge.no   { background: #d7e6d5; color: #2f6e2a; }
   .badge.gap  { background: #e2e5ea; color: #55606e; }
+  .badge.note { background: #ffe3b0; color: #8a5512; }
 
   .case {
     margin: 28px 0;
@@ -101,6 +102,7 @@
     <li><span class="badge clip">flags · amber</span> clipped content — bold dashed <strong>amber</strong> outline + a <code>content … clipped to …</code> line</li>
     <li><span class="badge no">no flag</span> CSS and Visual sizes match, nothing clipped — default hover state only</li>
     <li><span class="badge gap">gap</span> a case the current build intentionally does <strong>not</strong> flag — see why at the bottom</li>
+    <li><span class="badge note">names it · amber text</span> a tooltip line only — no outline color changes, no warning, just an explanation</li>
   </ul>
 </header>
 
@@ -153,7 +155,7 @@
       <code>H CSS 150px &rarr; Visual 120px (-30px)</code>, and a cause line
       <code>↳ transform on this element</code>.</p>
     <div class="stage">
-      <div class="box" style="width:300px;height:150px;transform:scale(.8)">B1</div>
+      <div class="box" id="fx-transform" style="width:300px;height:150px;transform:scale(.8)">B1</div>
     </div>
   </section>
 
@@ -195,7 +197,7 @@
     <p class="expect"><span class="badge no">no flag</span>
       <code>CSS 250&times;100 | Visual 250&times;100</code>, plain blue outline.</p>
     <div class="stage">
-      <div class="box" style="width:250px;height:100px">B5</div>
+      <div class="box" id="fx-control" style="width:250px;height:100px">B5</div>
     </div>
   </section>
 
@@ -232,13 +234,14 @@
 
   <section class="case">
     <h2>B9 · <code>min-width</code> clamping</h2>
-    <p class="expect"><span class="badge gap">gap</span>
+    <p class="expect"><span class="badge note">names it · amber text</span>
       <code>width:120px; min-width:360px</code> &rarr; renders at 360px.
-      <code>getComputedStyle().width</code> already returns the <em>used</em> value
-      (<code>360px</code>), so Layout Lens sees no discrepancy. Clamping is
-      <strong>not</strong> detected.</p>
+      <code>getComputedStyle().width</code> already returns the <em>used</em>
+      value (<code>360px</code>), so there's still no red mismatch — but Layout
+      Lens now names the reason: <code>↳ width pinned by min-width (360px), not
+      width</code>. An info line, not a warning: the outline stays plain.</p>
     <div class="stage">
-      <div class="box" style="width:120px;min-width:360px;height:100px">B9</div>
+      <div class="box" id="fx-clamp" style="width:120px;min-width:360px;height:100px">B9</div>
     </div>
   </section>
 
@@ -264,7 +267,7 @@
       still agree (no red), so this is the amber clip tier:
       <code>↔ content ~520px clipped to 200px (~320px hidden)</code>.</p>
     <div class="stage">
-      <div class="box" style="width:200px;height:90px;overflow:hidden;justify-content:flex-start">
+      <div class="box" id="fx-clip" style="width:200px;height:90px;overflow:hidden;justify-content:flex-start">
         <div style="flex:0 0 520px;height:60px;background:#ffd9a8;box-shadow:inset 0 0 0 1px #c9962f;display:flex;align-items:center;padding-left:8px">
           B11 child is 520px wide &rarr; clipped
         </div>
@@ -344,6 +347,26 @@
     </div>
   </section>
 
+  <!-- ============================================================ D ==== -->
+  <h2 style="font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:#8a929c;margin:32px 0 -8px">
+    D · viewport overflow
+  </h2>
+
+  <section class="case">
+    <h2>D1 · element wider than the viewport</h2>
+    <p class="expect"><span class="badge note">names it · amber text</span>
+      A different question from the clip check above — that one is the
+      element's <em>content</em> vs its own box; this is the element's own
+      <em>box</em> vs the page. <code>1400px</code> wide on a
+      <code>900px</code>-max page causes a real horizontal scrollbar. No
+      outline change, just a tooltip line:
+      <code>↔ ~500px wider than the viewport — likely cause of horizontal
+      scroll</code>.</p>
+    <div class="stage">
+      <div class="box" id="fx-vpoverflow" style="width:1400px;height:70px">D1</div>
+    </div>
+  </section>
+
   <!-- ============================================================ summary -->
   <section class="case summary">
     <h2>What this testbed shows</h2>
@@ -361,13 +384,19 @@
       <li><span class="badge no">quiet</span>Matching sizes (B5–B7),
         <code>overflow:hidden</code> with no overflow (B13), and user-scrollable
         containers (B15) stay in the plain hover state.</li>
+      <li><span class="badge note">names it</span><strong>Advisory tooltip
+        lines</strong> — a min/max-width|height clamp (B9) and an element wider
+        than the viewport (D1). Neither changes the outline; they explain a size
+        without claiming it's a bug.</li>
       <li><span class="badge gap">gap</span><strong>Still not flagged, by
         design:</strong> <code>zoom</code> on modern Chrome (B8),
-        <code>min</code>/<code>max</code> clamping (B9), <code>flex-shrink</code>
-        (B10), and sub-pixel rounding (C1) — <code>getComputedStyle()</code>
-        already returns the post-layout <em>used</em> value, so there is nothing
-        to compare against. The README's discrepancy claim covers
-        <strong>transforms</strong> and <strong>overflow clipping</strong>.</li>
+        <code>flex-shrink</code> (B10), and sub-pixel rounding (C1) —
+        <code>getComputedStyle()</code> already returns the post-layout
+        <em>used</em> value, so there is nothing to compare against. The
+        README's discrepancy claim covers <strong>transforms</strong> and
+        <strong>overflow clipping</strong>; <code>min</code>/<code>max</code>
+        clamping (B9) is now named via an advisory line even though it still
+        doesn't trigger the red check itself.</li>
     </ul>
   </section>
 

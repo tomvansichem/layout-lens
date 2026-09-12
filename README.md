@@ -1,17 +1,25 @@
 # Layout Lens
 
-A lightweight Chrome extension (Manifest V3) that inspects **padding, margin, and
-element size on hover**, and flags two kinds of layout surprise:
+A lightweight Chrome extension (Manifest V3) that answers one question on
+hover: **why is this element the size it is?** It draws the familiar padding/
+margin overlay, then goes further than DevTools does on the sizing question
+itself:
 
 - an element whose **CSS box size doesn't match what actually rendered** — CSS
   transforms on the element or an ancestor (red);
 - **content clipped out of view** by `overflow: hidden` / `clip`, including
-  `text-overflow: ellipsis` truncation (amber).
+  `text-overflow: ellipsis` truncation (amber);
+- an element's width or height **pinned by `min-`/`max-width`/`height`**
+  rather than by `width`/`height` itself (an info line, not a warning);
+- an element that's **wider than the viewport**, a common cause of an
+  unwanted horizontal scrollbar (an info line, not a warning).
 
-> **Status:** `0.9.0` — beta. Works well; a few rough edges are listed below.
+> **Status:** `1.0.0`. A few known limitations are listed below.
 
-No popup, no options page, no settings, no storage. It does nothing until you
-press the shortcut.
+Requests one permission (`activeTab`), plus `storage` for a memory-only flag
+that survives the browser evicting the extension's idle worker — nothing is
+ever written to disk. The toolbar popup is static help text; no options page,
+no settings. It does nothing until you press the shortcut.
 
 ---
 
@@ -41,7 +49,7 @@ Defaults are **`Alt+S`** (toggle) and **`Alt+U`** (cycle unit). Rebind either at
 | **`↓`** | Walk back **down** toward where you started |
 | Move the mouse off that element | Releases keyboard navigation |
 | **`c`** | Copy the measurement block (selector + sizes + any warning) to the clipboard |
-| **`f`** | Freeze / unfreeze mouse tracking — pins the overlay so you can move the cursor to DevTools or another element |
+| **`f`** | Pin / unpin the current element — mouse tracking stops, but the overlay keeps following the pinned element through scroll, so you can move the cursor to DevTools, or scroll to compare it against something else |
 | **`Alt+U`** | Cycle the displayed unit: `px` → `rem` → `em` → `px`. Display only — measuring stays in pixels. Resets to `px` on reload |
 | **`Esc`** | Turn the inspector off |
 
@@ -62,6 +70,13 @@ in a field.
 - **Bold dashed amber outline** + a clip line (`↔ content 520px clipped to
   200px (320px hidden)`) — content is larger than the box and `overflow`
   hides it with no scrollbar to reach it.
+- **Amber info lines, no outline change** — two separate, independent signals
+  that explain a size without claiming it's a bug:
+  `↳ width pinned by min-width (360px), not width` when `min-`/`max-width`
+  (or `-height`) is what's actually sizing the element, and `↔ 500px wider
+  than the viewport — likely cause of horizontal scroll` when the element's
+  own box extends past the page. Both can appear alongside a plain, red, or
+  amber-clip outline.
 - **Solid purple outline** = you reached this element with `↑`/`↓` rather than
   the mouse.
 - Matching sizes with nothing clipped stay quiet — just the green/orange
@@ -79,8 +94,9 @@ first, so an ordinary padded element is *not* a mismatch. It fires on
 layout-vs-paint differences — CSS `transform` / `scale` on the element or an
 ancestor. It does **not** fire on `min`/`max` clamping, `flex-shrink`, or
 `zoom` on current Chrome: `getComputedStyle()` already reports the post-layout
-value in those cases, so there's nothing to compare against. See
-`test/testbed.html` for a worked example of every case.
+value in those cases, so there's nothing to compare against. `min`/`max`
+clamping is still named, though — via the separate info line above, not the
+red check. See `test/testbed.html` for a worked example of every case.
 
 ---
 
@@ -88,26 +104,26 @@ value in those cases, so there's nothing to compare against. See
 
 | File | Role |
 | --- | --- |
-| `manifest.json` | MV3 manifest. Only permission: `activeTab`. Content script on `<all_urls>`, all frames. |
-| `background.js` | Service worker. Owns per-tab on/off state, broadcasts it to every frame, handles the `Alt+S` / `Alt+U` commands and `Esc`. |
+| `manifest.json` | MV3 manifest. Permissions: `activeTab`, `storage` (for `storage.session` only). Content script on `<all_urls>`, all frames. |
+| `background.js` | Service worker. Owns per-tab on/off state (in `chrome.storage.session`), broadcasts it to every frame, handles the `Alt+S` / `Alt+U` commands and `Esc`. |
 | `content.js` | The inspector. Inert until the worker sends `LAYOUT_LENS_SET`. |
 | `overlay.css` | Overlay styles, all scoped to `#layout-lens-root` (no effect until active). |
+| `popup.html` | Toolbar popup — static shortcut list, no script, no options. |
 | `icons/` | Generated PNGs — run `node tools/gen-icons.js` to rebuild. |
 | `tools/gen-icons.js` | Dependency-free icon generator. |
+| `test/testbed.html` | Every case in this README, laid out for hovering. |
+| `test/smoke.mjs` | Dependency-free smoke test — drives a real Chrome over the DevTools Protocol. `node test/smoke.mjs`. |
 
 No build step. Plain JS. Nothing to install.
 
 ---
 
-## Known limitations (beta)
+## Known limitations
 
 - **Cross-frame navigation:** `↑`/`↓` walk the DOM of one frame only; they can't
   cross an `<iframe>` boundary. Hovering into a same-origin iframe measures
   elements inside it; you may briefly see two overlays (parent highlighting the
   `<iframe>` element, child highlighting the inner element).
-- **Service worker eviction:** on/off state lives in the worker's memory (no
-  storage). If Chrome evicts the worker while the inspector is active, the next
-  `Alt+S` may need one extra press to re-sync.
 - **Clip check only covers `hidden` / `clip`.** `overflow: auto` / `scroll`
   containers are excluded on purpose — that content is reachable by scrolling,
   not lost.
@@ -116,6 +132,5 @@ No build step. Plain JS. Nothing to install.
 
 ## Roadmap
 
-- Optional: copy the selector or measurements to the clipboard.
-- Optional: freeze/pin the current measurement.
 - Cross-frame keyboard navigation.
+- `←`/`→` sibling navigation.

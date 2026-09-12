@@ -44,8 +44,11 @@
   let lockedEl = null;
   let originEl = null;
 
-  // `f` freezes mouse tracking so you can move the cursor away (to DevTools, or
-  // to compare elements) without the overlay following.
+  // `f` pins the current element: mouse tracking stops (move the cursor to
+  // DevTools, or toward another element to eyeball it) but the rAF loop keeps
+  // re-reading the pinned element's rect, so it still tracks scroll, resize,
+  // and layout animation — useful for comparing it against something further
+  // down the page.
   let frozen = false;
 
   // `c` copies the measurement block. `lastReport` is rebuilt every render;
@@ -178,6 +181,22 @@
       ? borderBox ? hRaw : hRaw + m.pt + m.pb + m.bt + m.bb
       : null;
 
+    // Which axis, if any, is pinned by an explicit min-/max-width|height rather
+    // than by `width`/`height` (or intrinsic/flex sizing). The mismatch check
+    // above can't see this: clamping resolves before computed style is read,
+    // so cssW/cssH already reflect the clamped value and there's nothing left
+    // to compare against. This is a separate, honest "why is it this size"
+    // signal — an info line, not a warning, so it's independent of `mismatch`.
+    const clampAxis = (raw, minRaw, maxRaw, axisLabel) => {
+      const max = parseFloat(maxRaw);
+      if (Number.isFinite(max) && Math.abs(raw - max) < 0.5) return { via: `max-${axisLabel}`, px: max };
+      const min = parseFloat(minRaw);
+      if (Number.isFinite(min) && min > 0 && Math.abs(raw - min) < 0.5) return { via: `min-${axisLabel}`, px: min };
+      return null;
+    };
+    m.clampW = Number.isFinite(wRaw) ? clampAxis(wRaw, cs.minWidth, cs.maxWidth, "width") : null;
+    m.clampH = Number.isFinite(hRaw) ? clampAxis(hRaw, cs.minHeight, cs.maxHeight, "height") : null;
+
     // Overflow mode per axis — used by the clip check in render(). The live
     // scrollWidth/clientWidth numbers are read there, per frame.
     m.ovX = cs.overflowX;
@@ -283,8 +302,16 @@
         }
       : null;
 
+    // ---- Viewport-overflow check: does this element's own box extend past
+    // where the page should end? A different question from the clip check
+    // above (that's the element's content vs its own box; this is the
+    // element's box vs the page) — computed live because scroll position
+    // changes every frame the check would otherwise miss it.
+    const overflowPx = R.right + window.scrollX - document.documentElement.clientWidth;
+    const vpOverflow = overflowPx > 0.5 ? overflowPx : null;
+
     renderLabels(R, m, px, py, pw, ph);
-    renderTip(el, m, vw, vh, dW, dH, mismatch, clip);
+    renderTip(el, m, vw, vh, dW, dH, mismatch, clip, vpOverflow);
     positionTip();
   }
 
@@ -319,10 +346,12 @@
   }
 
   // Cursor-following info box: ancestor breadcrumb, a prominent element label,
-  // sibling position, CSS vs Visual size, and — only when something is off —
-  // the per-axis size variance, transform cause, and/or clipped-content lines.
+  // sibling position, CSS vs Visual size, a min-/max-width|height clamp line
+  // when one applies (independent of mismatch — see clampAxis above), and —
+  // only when something is off — the per-axis size variance, transform cause,
+  // clipped-content, and/or viewport-overflow lines.
   // Lines marked `report: true` also feed the clipboard copy (`c`).
-  function renderTip(el, m, vw, vh, dW, dH, mismatch, clip) {
+  function renderTip(el, m, vw, vh, dW, dH, mismatch, clip, vpOverflow) {
     tip.replaceChildren();
 
     const report = [];
@@ -351,7 +380,7 @@
       ? `child ${Array.prototype.indexOf.call(p.children, el) + 1} of ${p.children.length}`
       : "root element";
     const tags = [];
-    if (frozen) tags.push("FROZEN");
+    if (frozen) tags.push("PINNED");
     if (lockedEl) tags.push("LOCKED");
     line(
       tags.length ? `${pos}   ·   ${tags.join("  ·  ")}` : pos,
@@ -360,6 +389,11 @@
 
     const cssStr = m.cssW == null ? "CSS n/a" : `CSS ${fmtLen(m.cssW)}×${fmtLen(m.cssH)}`;
     line(`${cssStr}  |  Visual ${fmtLen(vw)}×${fmtLen(vh)}`, null, true);
+
+    // Clamp lines are informational, not a warning — shown independent of
+    // `mismatch` since this is precisely the case the size check can't catch.
+    if (m.clampW) line(`↳ width pinned by ${m.clampW.via} (${fmtLen(m.clampW.px)}), not width`, "ll-clipwarn", true);
+    if (m.clampH) line(`↳ height pinned by ${m.clampH.via} (${fmtLen(m.clampH.px)}), not height`, "ll-clipwarn", true);
 
     if (mismatch) {
       if (Math.abs(dW) > 0.5) {
@@ -388,14 +422,18 @@
       }
     }
 
+    if (vpOverflow != null) {
+      line(`↔ ${fmtLen(vpOverflow)} wider than the viewport — likely cause of horizontal scroll`, "ll-clipwarn", true);
+    }
+
     lastReport = report.join("\n");
 
     if (copiedAt && Date.now() - copiedAt < 900) line("✓ copied", "ll-tip-ok");
 
     let hint;
-    if (frozen) hint = "❄ frozen — f release · c copy · ↑ ↓ navigate";
+    if (frozen) hint = "📌 pinned — scroll to compare · f release · c copy · ↑ ↓ navigate";
     else if (lockedEl) hint = "↑ parent  ↓ child · move mouse to release · c copy";
-    else hint = "↑ parent · c copy · f freeze";
+    else hint = "↑ parent · c copy · f pin";
     line(hint, "ll-tip-hint");
   }
 

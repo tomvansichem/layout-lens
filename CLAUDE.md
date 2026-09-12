@@ -5,16 +5,22 @@ Working notes for developing this extension. Read alongside `README.md` (user-fa
 ## What it is
 
 MV3 Chrome extension. A hover inspector for padding/margin + a **CSS-size vs
-rendered-size discrepancy** checker. Shortcut-activated only — deliberately no
-popup, no options page, no storage, no toolbar `action`.
+rendered-size discrepancy** checker. Shortcut-activated only — the toolbar
+popup is static help text, nothing more; no options page, no settings.
 
 ## Hard constraints (don't regress these)
 
 - **No build step.** Plain JS, loadable via "Load unpacked". No bundler, no deps.
-- **No `chrome.storage`**, no persistent state of any kind.
-- **Minimal permissions.** Only `activeTab`. No host permissions, no `tabs`,
-  no `scripting`. `activeTab` is granted on command execution, which is what
-  lets the worker `sendMessage` the content scripts.
+- **No persistent state on disk.** `chrome.storage.session` is the one
+  exception (see below) — it's memory-only, cleared when the browser closes,
+  and never touches `storage.local`/`sync`. Nothing else persists.
+- **Minimal permissions.** `activeTab` + `storage` (for `storage.session`
+  only). No host permissions, no `tabs`, no `scripting`. `activeTab` is
+  granted on command execution, which is what lets the worker `sendMessage`
+  the content scripts.
+- **The popup is static help only.** Shortcut list + the rebind link, no
+  script, no options, no state. Don't add logic to it without revisiting this
+  section — the moment it does something, it's a different kind of extension.
 - **`pointer-events: none`** on every overlay node — the page must stay fully
   interactive while active.
 - **Zero trace on deactivate** — every listener removed, overlay DOM gone.
@@ -23,12 +29,13 @@ popup, no options page, no storage, no toolbar `action`.
 
 ## Architecture
 
-Three files do the work: `manifest.json`, `background.js`, `content.js`, plus
-`overlay.css`.
+Four files do the work: `manifest.json`, `background.js`, `content.js`,
+`overlay.css`. `popup.html` is static help text with no logic — it doesn't
+participate in this flow at all.
 
 ```
 Alt+S  ──> chrome.commands.onCommand (background.js)
-             │  flips tabActive.get(tabId)
+             │  flips storage.session[tabId]
              ▼
        broadcast: chrome.tabs.sendMessage(tabId, {type:"LAYOUT_LENS_SET", active})
              │  (no frameId => every frame)
@@ -38,17 +45,23 @@ Alt+S  ──> chrome.commands.onCommand (background.js)
 Esc (content.js) ──> deactivate() locally
                  └─> chrome.runtime.sendMessage({type:"LAYOUT_LENS_ESC"})
                        ▼
-                 background: tabActive.set(tabId,false) + broadcast(false)
+                 background: storage.session[tabId]=false + broadcast(false)
 ```
 
 `Alt+U` takes the same worker→frames path with `{type:"LAYOUT_LENS_CYCLE_UNIT"}`.
-It's display-only, so the worker just forwards it — no `tabActive`, no state.
+It's display-only, so the worker just forwards it — no state at all, not even
+in storage.session.
 
 **The worker is the single source of truth for on/off state.** Content scripts
 never flip their own state independently — that's what keeps multi-frame pages
 in sync (one `Alt+S` = whole tab, `Esc` anywhere = whole tab off).
-`tabActive` is an in-memory `Map` in the worker; it's intentionally not
-persisted. Cleared on tab close and on `status === "loading"`.
+State lives in `chrome.storage.session` (one boolean per tabId, absent = off),
+not a worker-local variable — a plain in-memory `Map` didn't survive MV3
+service-worker eviction (an idle worker can be killed and restarted at any
+time), which cost users a dead first keypress after a resync. `storage.session`
+is memory-only and cleared when the browser closes, so this doesn't reopen the
+"no persistent state" constraint, just narrows what it means. Still cleared on
+tab close and on `status === "loading"`.
 
 ### content.js internals
 
@@ -70,9 +83,13 @@ persisted. Cleared on tab close and on `status === "loading"`.
   (deepest element the descent started from). `↑` = parent, `↓` = retrace
   toward `originEl`, one press past origin releases. Moving the mouse clear of
   `originEl` releases. While locked, mouse targeting is suppressed.
-- **Freeze (`f`):** `frozen` flag. `onMouseOver`/`onMouseMove`/`setTarget` all
-  bail while set, so the overlay and tooltip stay put. `↑`/`↓`/`c` still work.
-  Unfreeze retargets under the cursor. Cleared on `hideBoxes`/`deactivate`.
+- **Pin (`f`):** `frozen` flag (internal name unchanged; user-facing copy says
+  "pin", not "freeze" — see Gotchas). `onMouseOver`/`onMouseMove`/`setTarget`
+  all bail while set, so mouse *targeting* stops, but the rAF loop keeps
+  re-reading the pinned element's rect every frame — it still tracks scroll,
+  resize, and layout animation. That's what makes pin-then-scroll-to-compare
+  work. `↑`/`↓`/`c` still work. Unfreeze retargets under the cursor. Cleared
+  on `hideBoxes`/`deactivate`.
 - **Copy (`c`):** `renderTip` rebuilds `lastReport` every frame from the lines
   it marks `report:true` (selector, sizes, warnings — not the breadcrumb/hint).
   `copyText` uses `navigator.clipboard` with an `execCommand` fallback for
@@ -104,6 +121,21 @@ persisted. Cleared on tab close and on `status === "loading"`.
   safe without a guard. Precedence in `render()`: red mismatch > amber clip >
   purple keyboard-lock; only one state class is set on the outline at a time,
   but the tooltip shows clip lines even under a red mismatch.
+- **Clamp line (info, not a warning):** `readMetrics`' `clampAxis` compares raw
+  `cs.width`/`cs.height` against `cs.minWidth`/`cs.maxWidth`/`cs.minHeight`/
+  `cs.maxHeight`; a match within 0.5px means that axis is `min`/`max`-pinned
+  rather than sized by `width`/`height`/intrinsic sizing. `parseFloat("auto")`
+  and `parseFloat("none")` are both `NaN`, so an unset bound is naturally
+  excluded — no extra branching needed. Cached in `m.clampW`/`m.clampH` on
+  target change, rendered as a `↳` line independent of `mismatch` (that's the
+  whole point — this is precisely the case the size-mismatch check can't see,
+  because clamping resolves before computed style is read).
+- **Viewport-overflow line (info, not a warning):** in `render()`,
+  `R.right + window.scrollX - document.documentElement.clientWidth`. Computed
+  live (not cached) because scroll position changes every frame. A different
+  question from the clip check — that one is the element's *content* vs its
+  own box; this is the element's own *box* vs the page. No outline-color
+  change, tooltip line only, reuses `.ll-clipwarn`'s amber text.
 
 ## Gotchas already hit (do not reintroduce)
 
@@ -120,6 +152,24 @@ persisted. Cleared on tab close and on `status === "loading"`.
 3. **`background.js` messaging needs no host permission** because `activeTab` is
    granted by the command invocation. Don't add host permissions to "fix"
    messaging.
+4. **"Freeze" → "pin" was a copy-only change.** The `f` key's user-facing text
+   (hint line, `PINNED` tag) says "pin"; the internal identifiers (`frozen`,
+   `toggleFreeze`) still say freeze. Don't rename the internals to match —
+   it's a large diff for zero behavior change. If you touch this code, expect
+   the mismatch and don't "fix" it mid-unrelated-change.
+5. **Stable-channel Chrome silently ignores `--load-extension`.** Confirmed on
+   Chrome 152: no error, the extension just never registers — verified with a
+   trivial, unrelated MV3 extension, so it's not specific to this repo. Only
+   matters for `test/smoke.mjs`; doesn't affect real usage (users load via
+   "Load unpacked" through the UI, which is unaffected). A "Chrome for Testing"
+   build doesn't have the restriction — see the comment at the top of
+   `test/smoke.mjs`.
+6. **Not every Chrome for Testing build actually works either.** 152.0.7977.82
+   passes the full smoke test; 153.0.8010.36 loads the extension (manifest
+   readable, service worker starts) but never injects the content script into
+   any page — a Chrome-side issue, not a Layout Lens one, but it means "latest
+   Chrome for Testing" is not a safe default. Pin a version you've actually
+   verified (`node test/smoke.mjs` going green), especially in CI.
 
 ## Regenerating icons
 
@@ -151,19 +201,39 @@ match `overlay.css` (`#f6b26b`, `#87c882`).
   the variance line switch unit; `Unit: …` flashes ~1s. Override `<html>`
   `font-size` → `rem` tracks it. On an element with its own `font-size`, `em`
   differs from `rem`. `Esc` / `Alt+S`-off returns to `px`.
+- Element with `width` pinned by `min-width`/`max-width`: `↳ width pinned by
+  min-width (…), not width` line, no red outline. Element wider than the
+  viewport (e.g. a fixed px width past the page's max-width): `↔ …px wider
+  than the viewport` line, no outline change.
+- `f` to pin, scroll the page: the pinned element's overlay and tooltip keep
+  tracking it. `↑`/`↓`/`c` still work while pinned.
+- Click the toolbar icon: popup shows the shortcut list and the rebind path,
+  nothing else.
+- Force worker eviction (leave the tab idle a few minutes, or use
+  `chrome://serviceworker-internals` to stop it manually), then `Alt+S`: takes
+  effect on the **first** press, not the second.
 - Full matrix: open `test/testbed.html` (also the `file://` check).
+- `node test/smoke.mjs` (needs `CHROME_PATH` pointed at a Chrome for Testing
+  build — see the file's header comment) for the automated subset of the above.
 
 ## Deferred / not done
 
 - Cross-frame keyboard navigation.
 - `←`/`→` sibling navigation (natural complement to `↑`/`↓`, ~15 lines).
-- `cs.width === cs.minWidth` / `=== cs.maxWidth` heuristic — an info line noting
-  the size is pinned by a constraint, not `width`. The honest, cheap 80% of
-  "clamping detection" without walking stylesheets. Not built.
 - Element-to-element distance measuring, cascade introspection, config UI —
   explicitly out of scope (each doubles the surface area).
-- `chrome.storage.session` for state survival across worker eviction — rejected
-  so far to keep the "no storage" property.
+- Sub-pixel position advisory (element rendered at a non-integer x/y — blurry
+  text/borders). Considered alongside the clamp and viewport-overflow lines;
+  held back for now to avoid three new advisory lines at once. Cheap to add
+  if it turns out to matter (`rect.left % 1 !== 0`-style check).
+- Container-query awareness (highlight/label the nearest `container-type`
+  ancestor, show its inline-size). Fits the tool conceptually, but rejected:
+  (a) the "flag it as a cause of the red mismatch" idea is a false premise —
+  container queries change which rules apply, and `getComputedStyle` already
+  returns the used value, so they produce no border-box-vs-rect delta;
+  (b) an ancestor highlight costs a sixth overlay color and a second element's
+  worth of overlay on CQ-heavy pages. A tooltip-only version stays possible if
+  the need ever proves real.
 
 ## Conventions
 
