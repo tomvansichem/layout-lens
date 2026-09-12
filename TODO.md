@@ -37,39 +37,25 @@ if a decision changes — don't silently drift from it.
 - **Do not actually submit anything to the Chrome Web Store** — the developer
   account, payment, and submission are user-only actions (task 5).
 
-## Task 1 — Repo housekeeping, commit, PR
+## Task 1 — Repo housekeeping, commit, PR — ✅ done
 
-- [ ] Add `LICENSE` at repo root: standard MIT text, copyright line
-      `Copyright (c) 2026 tomvansichem`.
-- [ ] `manifest.json`: bump `"version"` to `"1.0.0"`; remove the
-      `"version_name"` key entirely (it only existed to append "(beta)" — with
-      no beta label there's nothing left for it to add over `version`).
-- [ ] `manifest.json`: add `"homepage_url": "https://github.com/tomvansichem/layout-lens"`.
-- [ ] `README.md`: update the status line (currently
-      `> **Status:** \`0.10.0\` — beta. Works well; a few rough edges are
-      listed below.`) — drop "beta", keep the honest pointer to known
-      limitations.
-- [ ] `README.md`: rename the `## Known limitations (beta)` heading to
-      `## Known limitations` — the limitations listed there are still real and
-      still worth documenting, just not gated behind a beta label.
-- [ ] Grep the repo for stray `0.9.0` / `0.10.0` / "beta" mentions before
-      committing (`grep -rn "beta\|0\.9\.0\|0\.10\.0" --include="*.md"
-      --include="*.json" --include="*.js" .`) — the two files above were the
-      only hits as of this writing, but re-check in case something changed.
-- [ ] Commit everything outstanding on `feat/unit-toggle`: the prior session's
-      work (`storage.session` in `background.js`, the two new advisory checks
-      in `content.js`, `popup.html`, the `storage`/`action` manifest additions,
-      `test/smoke.mjs`, the `test/testbed.html` fixtures, the `CLAUDE.md`/
-      `README.md` updates already made) plus this task's housekeeping. Split
-      into a few coherent commits rather than one giant one if it reads
-      better — this is a personal-project branch, use judgment.
-- [ ] Push `feat/unit-toggle` (no upstream yet — first push needs `-u`).
-- [ ] Open a PR into `main` via `gh pr create`, with a summary that covers: the
-      container-query-awareness feature that was deliberately rejected (and
-      why — it's already recorded in `CLAUDE.md`'s Deferred list, worth a
-      one-line callback), the eviction fix, the two new checks, the popup, and
-      the smoke test.
-- [ ] **Stop. Do not merge.** Leave it for review.
+- [x] Added `LICENSE` at repo root (MIT, copyright `tomvansichem`, 2026).
+- [x] `manifest.json`: bumped `"version"` to `"1.0.0"`; removed
+      `"version_name"` entirely.
+- [x] `manifest.json`: added `"homepage_url": "https://github.com/tomvansichem/layout-lens"`.
+- [x] `README.md`: status line and "Known limitations" heading both dropped
+      the beta framing.
+- [x] Confirmed via grep that no other `0.9.0`/`0.10.0`/"beta" references
+      remained outside this file's own task descriptions.
+- [x] Committed as two commits on `feat/unit-toggle`:
+      `f9604fe` (eviction fix, popup, two new advisory checks, smoke test,
+      version bump + homepage_url, doc updates) and `9ab95ce` (LICENSE +
+      this TODO.md).
+- [x] Pushed `feat/unit-toggle` with `-u` (no upstream existed before).
+- [x] Opened **https://github.com/tomvansichem/layout-lens/pull/1** — summary
+      covers the eviction fix, popup, two new checks, smoke test, v1.0.0 cut,
+      and a callback to the container-query-awareness rejection.
+- [x] Did not merge — left for review, as decided.
 
 ## Task 2 — CI: run the smoke test on every push
 
