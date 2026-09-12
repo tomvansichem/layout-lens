@@ -105,7 +105,11 @@ function waitForDevtoolsUrl(child) {
       }
     };
     child.stderr.on("data", onData);
-    child.once("exit", (code) => reject(new Error(`Chrome exited early (code ${code})`)));
+    // Chrome's own stderr is the only account of why it died. Without it, a
+    // sandbox refused by the kernel and a broken binary are the same message.
+    child.once("exit", (code, signal) =>
+      reject(new Error(`Chrome exited early (code ${code}, signal ${signal})\n${buf.trim()}`))
+    );
     setTimeout(() => reject(new Error("Timed out waiting for the DevTools endpoint")), 15000);
   });
 }

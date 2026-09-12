@@ -27,6 +27,12 @@ jobs:
         with:
           node-version: 22 # smoke.mjs uses global WebSocket, unflagged since 22
 
+      # Ubuntu 24.04 blocks unprivileged user namespaces via AppArmor, which is
+      # exactly what Chrome's sandbox needs to start. Without this, Chrome dies
+      # on launch before the debugger port opens.
+      - name: Unblock Chrome's sandbox
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
       - name: Download Chrome for Testing
         run: |
           curl -fsSL -o "$RUNNER_TEMP/chrome.zip" \
