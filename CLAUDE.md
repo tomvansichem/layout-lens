@@ -181,6 +181,29 @@ Dependency-free (Node `zlib` only). Art = the tool's own language: dark rounded
 tile, orange margin ring → green padding ring → light content square. Colors
 match `overlay.css` (`#f6b26b`, `#87c882`).
 
+## Regenerating the Store promo tile
+
+```
+node tools/gen-promo-tile.mjs
+```
+
+Rasterizes `assets/promo/small-tile.svg` (hand-made, edited directly, not
+generated) to exactly 440×280 (the Store's "Small tile" slot — shown in
+category/search browsing in place of an uploaded icon, which is what was
+happening before this existed). Reuses `test/harness.mjs`'s Chrome launcher
+and CDP client, so it needs the same Chrome-for-Testing-or-real-Chrome setup
+as `test/smoke.mjs` (`CHROME_PATH`, see that file's header) — no extension is
+loaded here, so plain stable Chrome works fine too, unlike the smoke test. The
+SVG is inlined into a wrapper page at capture time rather than opened via
+`file://` directly, so there's no intermediate file that can fall out of sync
+with it.
+
+To change the tile, edit `small-tile.svg` itself, then rerun the command.
+Output is `assets/promo/small-tile.png` — a publishing artifact like
+`assets/screenshots/`, not part of the extension package. Uploading it to the
+Dashboard is a manual step (see `TODO.md`'s Task 5 history for why that's
+user-only).
+
 ## Manual test checklist
 
 - Live site with a smooth-scroll lib (agency/portfolio site): `Alt+S`, hover,
