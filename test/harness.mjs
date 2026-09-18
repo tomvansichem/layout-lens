@@ -69,7 +69,7 @@ function serveTestbed() {
   });
 }
 
-function findChrome() {
+export function findChrome() {
   if (process.env.CHROME_PATH) return process.env.CHROME_PATH;
   const byPlatform = {
     darwin: [
@@ -90,7 +90,7 @@ function findChrome() {
 
 // Chrome prints its DevTools websocket endpoint to stderr once the debugger
 // port is actually listening — more reliable than guessing a free port.
-function waitForDevtoolsUrl(child) {
+export function waitForDevtoolsUrl(child) {
   return new Promise((resolve, reject) => {
     let buf = "";
     const onData = (chunk) => {
