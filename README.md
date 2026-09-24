@@ -54,7 +54,7 @@ Defaults are **`Alt+S`** (toggle) and **`Alt+U`** (cycle unit). Rebind either at
 
 | Action | Result |
 | --- | --- |
-| Press **`Alt+S`** | Toggle the inspector on/off for the current tab (all frames) |
+| Press **`Alt+S`** | Toggle the inspector on/off for the current tab (all frames). A short notice confirms it, and the toolbar icon shows `ON` while it's active |
 | Move the mouse | Measures the element under the cursor |
 | **`↑`** | Select the **parent** of the current element |
 | **`↓`** | Walk back **down** toward where you started |
@@ -117,7 +117,7 @@ than the red check. See `test/testbed.html` for a worked example of every case.
 | File | Role |
 | --- | --- |
 | `manifest.json` | MV3 manifest. Permissions: `activeTab`, `storage` (for `storage.session` only). Content script on `<all_urls>`, all frames. |
-| `background.js` | Service worker (an event page in Firefox). Owns per-tab on/off state (in `chrome.storage.session`), broadcasts it to every frame, handles the `Alt+S` / `Alt+U` commands and `Esc`. |
+| `background.js` | Service worker (an event page in Firefox). Owns per-tab on/off state (in `chrome.storage.session`) and the toolbar badge, broadcasts it to every frame, handles the `Alt+S` / `Alt+U` commands and `Esc`. |
 | `content.js` | The inspector. Inert until the worker sends `LAYOUT_LENS_SET`. |
 | `overlay.css` | Overlay styles, all scoped to `#layout-lens-root` (no effect until active). |
 | `popup.html` | Toolbar popup. Static shortcut list, no script, no options. |

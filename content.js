@@ -36,7 +36,6 @@
   const UNITS = ["px", "rem", "em"];
   let unit = "px";
   let unitScale = 1; // px per `unit`; recomputed each frame in render()
-  let unitToastTimer = 0;
 
   // DOM-tree navigation. While `lockedEl` is set, the mouse no longer picks the
   // target — ArrowUp/ArrowDown walk the ancestor chain instead. `originEl` is
@@ -63,7 +62,8 @@
   let outline = null;
   let labelLayer = null;
   let tip = null;
-  let unitToast = null; // transient "Unit: rem" label, shown ~1s on Alt+U
+  let toast = null; // transient notice: "Layout Lens on" on activate, "Unit: rem" on Alt+U
+  let toastTimer = 0;
 
   // ---- Small helpers -----------------------------------------------------
   const max0 = (n) => (n > 0 ? n : 0);
@@ -110,10 +110,10 @@
     outline = div("ll-box ll-outline");
     labelLayer = div("ll-labels");
     tip = div("ll-tip");
-    unitToast = div("ll-unit");
+    toast = div("ll-toast");
 
     // Order matters for stacking: margin behind padding behind outline.
-    root.append(marginBox, paddingBox, outline, labelLayer, tip, unitToast);
+    root.append(marginBox, paddingBox, outline, labelLayer, tip, toast);
 
     // documentElement is always present, even on bare file:// or XML pages.
     document.documentElement.appendChild(root);
@@ -545,17 +545,22 @@
     ensureLoop();
   }
 
-  // Alt+U — step the display unit px → rem → em → px. Flash the choice for ~1s
-  // so there's feedback without a permanent readout, then let the running rAF
-  // loop repaint labels and tip in the new unit.
+  // Show `text` in the toast for `ms`, then fade it. Feedback without a
+  // permanent readout on the page.
+  function flash(text, ms) {
+    toast.textContent = text;
+    toast.style.opacity = "1";
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toast.style.opacity = "0";
+    }, ms);
+  }
+
+  // Alt+U — step the display unit px → rem → em → px. Flash the choice, then
+  // let the running rAF loop repaint labels and tip in the new unit.
   function cycleUnit() {
     unit = UNITS[(UNITS.indexOf(unit) + 1) % UNITS.length];
-    unitToast.textContent = "Unit: " + unit;
-    unitToast.style.opacity = "1";
-    clearTimeout(unitToastTimer);
-    unitToastTimer = setTimeout(() => {
-      unitToast.style.opacity = "0";
-    }, 1000);
+    flash("Unit: " + unit, 1000);
     ensureLoop();
   }
 
@@ -676,6 +681,10 @@
     document.addEventListener("mouseover", onMouseOver, true);
     document.addEventListener("mousemove", onMouseMove, true);
     window.addEventListener("keydown", onKeyDown, true);
+    // Nothing is drawn until the first hover, so confirm the keypress landed.
+    // Top frame only: every frame activates, and one notice per iframe would
+    // stack up.
+    if (window === window.top) flash("Layout Lens on · Esc to exit", 2000);
     // The rAF loop starts on the first hover (applyTarget -> ensureLoop).
   }
 
@@ -687,10 +696,10 @@
     window.removeEventListener("keydown", onKeyDown, true);
     if (rafId) cancelAnimationFrame(rafId);
     rafId = 0;
-    clearTimeout(unitToastTimer);
-    unitToastTimer = 0;
+    clearTimeout(toastTimer);
+    toastTimer = 0;
     if (root) root.remove();
-    root = marginBox = paddingBox = outline = labelLayer = tip = unitToast = null;
+    root = marginBox = paddingBox = outline = labelLayer = tip = toast = null;
     currentEl = null;
     metrics = null;
     lockedEl = null;
