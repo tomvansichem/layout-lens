@@ -4,8 +4,9 @@ Working notes for developing this extension. Read alongside `README.md` (user-fa
 
 ## What it is
 
-MV3 Chrome extension. A hover inspector for padding/margin + a **CSS-size vs
-rendered-size discrepancy** checker. Shortcut-activated only — the toolbar
+MV3 extension for Chrome and Firefox (see "Firefox" below). A hover
+inspector for padding/margin + a **CSS-size vs rendered-size discrepancy**
+checker. Shortcut-activated only — the toolbar
 popup is static help text, nothing more; no options page, no settings.
 
 ## Hard constraints (don't regress these)
@@ -137,6 +138,26 @@ tab close and on `status === "loading"`.
   own box; this is the element's own *box* vs the page. No outline-color
   change, tooltip line only, reuses `.ll-clipwarn`'s amber text.
 
+## Firefox
+
+One codebase, one manifest, one zip for both stores. Firefox MV3 has no
+service workers, so `background` lists `background.js` twice: Chrome reads
+`service_worker`, Firefox reads `scripts` and runs it as an event page. Chrome
+before 121 refused a manifest with both keys, hence `minimum_chrome_version:
+121`; Firefox 121+ likewise starts the event page despite `service_worker`.
+
+- `browser_specific_settings.gecko.id` is the AMO identity. **Never change it
+  after the first AMO upload**; a new ID is a new add-on.
+- `data_collection_permissions: none` is required for new AMO listings since
+  Nov 2025, and supported from Firefox 140, hence `strict_min_version: 140.0`.
+- No code differences: Firefox accepts `chrome.*` (callbacks and promises),
+  has `storage.session`, and grants `activeTab` on a `commands` shortcut.
+- Content-script host access comes from the install prompt (Firefox 127+),
+  but the user can revoke it per site. Revoked = no content script = the
+  shortcut silently does nothing on that site, same as `chrome://` pages.
+- `test/smoke.mjs` is Chrome-only (CDP). Firefox is covered by the manual
+  checklist.
+
 ## Gotchas already hit (do not reintroduce)
 
 1. **`!important` in `overlay.css` for `left`/`top`/`width`/`height` breaks
@@ -235,6 +256,9 @@ user-only).
 - Force worker eviction (leave the tab idle a few minutes, or use
   `chrome://serviceworker-internals` to stop it manually), then `Alt+S`: takes
   effect on the **first** press, not the second.
+- Firefox (temporary add-on via `about:debugging`): `Alt+S`, hover, `Esc`,
+  `Alt+U`, same-origin iframe, `file://`. On Windows/Linux, check `Alt+S`
+  isn't swallowed by the menu bar's History access key.
 - Full matrix: open `test/testbed.html` (also the `file://` check).
 - `node test/smoke.mjs` (needs `CHROME_PATH` pointed at a Chrome for Testing
   build — see `test/harness.mjs`'s header comment) for the automated subset of

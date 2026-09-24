@@ -1,10 +1,18 @@
 {
   "manifest_version": 3,
   "name": "Layout Lens",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Hover inspector for padding/margin plus a CSS-vs-rendered size discrepancy checker. Activated only by a keyboard shortcut.",
   "homepage_url": "https://github.com/tomvansichem/layout-lens",
-  "minimum_chrome_version": "102",
+  "minimum_chrome_version": "121",
+
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "layout-lens@tomvansichem",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": { "required": ["none"] }
+    }
+  },
 
   "icons": {
     "16": "icons/icon16.png",
@@ -16,7 +24,8 @@
   "permissions": ["activeTab", "storage"],
 
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "scripts": ["background.js"]
   },
 
   "action": {

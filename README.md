@@ -1,6 +1,6 @@
 # Layout Lens
 
-A Chrome extension (Manifest V3) that answers one question on hover: **why is
+A Chrome and Firefox extension (Manifest V3) that answers one question on hover: **why is
 this element the size it is?** It draws the familiar padding/margin overlay,
 then names what is driving the size:
 
@@ -24,7 +24,9 @@ popup is static help text; no options page, no settings.
 
 ---
 
-## Install (Load unpacked)
+## Install from source
+
+### Chrome
 
 1. Open `chrome://extensions`.
 2. Turn on **Developer mode** (top-right).
@@ -33,10 +35,18 @@ popup is static help text; no options page, no settings.
    and enable **Allow access to file URLs**. Chrome requires this per-extension
    toggle; no manifest setting can grant it.
 
+### Firefox
+
+1. Open `about:debugging#/runtime/this-firefox`.
+2. Click **Load Temporary Add-on…** and select this folder's `manifest.json`.
+
+A temporary add-on is removed when Firefox restarts. Firefox 140 or later.
+
 ### Change the shortcut
 
 Defaults are **`Alt+S`** (toggle) and **`Alt+U`** (cycle unit). Rebind either at
-`chrome://extensions/shortcuts`.
+`chrome://extensions/shortcuts`, or in Firefox at `about:addons` → gear menu →
+**Manage Extension Shortcuts**.
 
 ---
 
@@ -107,7 +117,7 @@ than the red check. See `test/testbed.html` for a worked example of every case.
 | File | Role |
 | --- | --- |
 | `manifest.json` | MV3 manifest. Permissions: `activeTab`, `storage` (for `storage.session` only). Content script on `<all_urls>`, all frames. |
-| `background.js` | Service worker. Owns per-tab on/off state (in `chrome.storage.session`), broadcasts it to every frame, handles the `Alt+S` / `Alt+U` commands and `Esc`. |
+| `background.js` | Service worker (an event page in Firefox). Owns per-tab on/off state (in `chrome.storage.session`), broadcasts it to every frame, handles the `Alt+S` / `Alt+U` commands and `Esc`. |
 | `content.js` | The inspector. Inert until the worker sends `LAYOUT_LENS_SET`. |
 | `overlay.css` | Overlay styles, all scoped to `#layout-lens-root` (no effect until active). |
 | `popup.html` | Toolbar popup. Static shortcut list, no script, no options. |
