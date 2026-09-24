@@ -13,7 +13,7 @@ then names what is driving the size:
 - an element that's **wider than the viewport**, a common cause of an
   unwanted horizontal scrollbar (an info line, not a warning).
 
-> **Status:** `1.0.0`. A few known limitations are listed below.
+> **Status:** `1.1.0`. A few known limitations are listed below.
 
 Requests two permissions: `activeTab`, and `storage` for a memory-only flag
 that survives the browser evicting the extension's idle worker. Nothing is
