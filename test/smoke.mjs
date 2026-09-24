@@ -103,6 +103,24 @@ async function main() {
   const { page, sw, tabId, close } = await startInspector();
 
   try {
+    // Read straight away: the notice is up for ~2s after activation.
+    console.log("Activate");
+    const toast = await page.evaluate(`(() => {
+      const t = document.querySelector("#layout-lens-root .ll-toast");
+      return t ? { text: t.textContent, opacity: t.style.opacity } : null;
+    })()`);
+    check("activation notice shown", toast && toast.text.startsWith("Layout Lens on") && toast.opacity === "1", JSON.stringify(toast));
+
+    // The harness messages the page directly, bypassing the worker's state,
+    // so drive setTabActive() itself to check the badge follows it.
+    const badge = (on) => sw.evaluate(`(async () => {
+      await setTabActive(${tabId}, ${on});
+      return chrome.action.getBadgeText({ tabId: ${tabId} });
+    })()`);
+    check("badge ON while active", (await badge(true)) === "ON");
+    check("badge cleared when off", (await badge(false)) === "");
+    console.log("");
+
     for (const c of cases) {
       console.log(c.name);
       const state = await hoverAndRead(page, c.id);

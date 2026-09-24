@@ -106,8 +106,17 @@ tab close and on `status === "loading"`.
   `render()` — `rem` divides by a fresh `getComputedStyle(documentElement)
   .fontSize`, `em` by the target's cached `m.fontPx`; `|| 16` is just a floor
   for an unparseable value. Feeds the padding/margin labels, the `CSS…|Visual…`
-  line, and the variance/`fmtDelta` lines (not the clip line). `.ll-unit` is a
-  ~1s opacity-fade toast — the only CSS transition in `overlay.css`.
+  line, and the variance/`fmtDelta` lines (not the clip line). The `Unit: …`
+  confirmation goes through the shared toast (next item).
+- **Toast (`.ll-toast`) + badge:** `flash(text, ms)` shows one line bottom
+  centre, then fades it: the only CSS transition in `overlay.css`. Used for
+  `Layout Lens on · Esc to exit` (~2s, `activate()`, top frame only so iframes
+  don't stack copies) and `Unit: …` (~1s). The activation notice exists because
+  nothing is drawn until the first hover, so `Alt+S` otherwise looked like it
+  did nothing. The lasting signal is the toolbar badge: `setTabActive()` in
+  `background.js` sets a tab-scoped `ON`. No permission needed. Deliberately
+  no permanent in-page indicator: a corner pill covers page UI (chat widgets,
+  cookie bars) that someone may want to inspect, and ends up in screenshots.
 - **Size-mismatch check (red):** `readMetrics` normalizes
   `getComputedStyle().width/height` to a **border-box** figure (adds
   padding+border when box-sizing is content-box) so ordinary padded elements are
@@ -232,6 +241,10 @@ user-only).
   the page; wheel still scrolls; `Esc` leaves no trace.
 - `localhost` app and a local `.html` opened as `file://` (with file-URL access
   enabled): same behavior.
+- `Alt+S`: `Layout Lens on · Esc to exit` shows bottom centre for ~2s, once
+  (not once per iframe), and the toolbar icon shows a blue `ON` badge. `Esc`
+  or `Alt+S` again clears the badge; so does reloading the tab. Other tabs'
+  icons stay plain.
 - Page with a same-origin `<iframe>`: `Alt+S` toggles both; hovering inside the
   iframe measures inner elements.
 - Element with `transform: scale(...)`: dashed red outline + variance line.

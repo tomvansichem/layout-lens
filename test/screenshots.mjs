@@ -127,6 +127,11 @@ async function main() {
       features: [{ name: "prefers-color-scheme", value: "light" }],
     });
     await sleep(200); // let the resize settle
+    // The "Layout Lens on" notice is up for ~2s after activation. Wait for it
+    // to fade, or it lands in the first screenshot.
+    await waitFor(() =>
+      page.evaluate('getComputedStyle(document.querySelector("#layout-lens-root .ll-toast")).opacity === "0"'),
+    );
 
     for (const shot of shots) {
       await capture(page, shot);

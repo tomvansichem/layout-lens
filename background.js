@@ -41,11 +41,20 @@ async function getTabActive(tabId) {
   return !!store[tabId];
 }
 
+// The toolbar badge mirrors the state: "ON" while the lens is active in that
+// tab. Unlike the in-page notice it stays up, and it draws nothing on the
+// page. Tab-scoped, so other tabs keep a plain icon. The colour is the
+// overlay's blue outline.
+chrome.action.setBadgeBackgroundColor({ color: "#4682dc" });
+chrome.action.setBadgeTextColor({ color: "#ffffff" });
+
 async function setTabActive(tabId, active) {
   // Storing only "true" entries keeps storage.session from accumulating a
   // key per tab ever opened; an absent key already means false via getTabActive.
   if (active) await chrome.storage.session.set({ [tabId]: true });
   else await chrome.storage.session.remove(String(tabId));
+  // Rejects if the tab is already gone; nothing left to update then.
+  chrome.action.setBadgeText({ tabId, text: active ? "ON" : "" }).catch(() => {});
 }
 
 // Global keyboard shortcuts. Both are rebindable at chrome://extensions/shortcuts
@@ -80,10 +89,10 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
 });
 
 // Forget a tab's state when it closes or starts loading a new document — the
-// fresh content scripts always come up inactive.
+// fresh content scripts always come up inactive, so the badge clears too.
 chrome.tabs.onRemoved.addListener((tabId) => {
   chrome.storage.session.remove(String(tabId));
 });
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-  if (changeInfo.status === "loading") chrome.storage.session.remove(String(tabId));
+  if (changeInfo.status === "loading") setTabActive(tabId, false);
 });

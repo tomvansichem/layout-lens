@@ -175,11 +175,11 @@
   margin-top: 4px !important;
 }
 
-/* Transient unit indicator — shown for ~1s when Alt+U cycles the display unit.
-   JS sets only `opacity` inline (1 on change, 0 after the timer); the fade is
-   the one transition in this file, opacity-only and under 0.25s. Reuses the
-   tooltip's colours — no new palette entry. */
-#layout-lens-root .ll-unit {
+/* Transient notice: "Layout Lens on" for ~2s on activate, "Unit: rem" for ~1s
+   on Alt+U. JS sets only `opacity` inline (1 on show, 0 after the timer); the
+   fade is the one transition in this file, opacity-only and under 0.25s.
+   Reuses the tooltip's colours — no new palette entry. */
+#layout-lens-root .ll-toast {
   position: absolute !important;
   left: 50% !important;
   bottom: 24px !important;
