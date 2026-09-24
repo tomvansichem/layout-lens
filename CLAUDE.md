@@ -271,10 +271,14 @@ node test/screenshots.mjs
 ```
 
 Same harness as the smoke test (`test/harness.mjs`: Chrome up, extension
-loaded, testbed served, inspector on), a 1280×800 emulated viewport, and a
-forced light scheme so the host machine's theme doesn't decide what the listing
-looks like. Writes five PNGs to `assets/screenshots/` — a publishing artifact,
-not part of the extension package.
+loaded, testbed served, inspector on), a 640×400 emulated viewport captured
+at 2× (the Store only takes 1280×800, and a 1:1 desktop frame left the tooltip
+at an unreadable 11px), and a forced light scheme so the host machine's theme
+doesn't decide what the listing looks like. The 2× lives in the capture's
+`clip.scale`, not in `deviceScaleFactor`: with a device pixel ratio of 2,
+headless Chrome returned stale frames (see the comment in `capture()`).
+Writes five PNGs to `assets/screenshots/` — a publishing artifact, not part of
+the extension package.
 
 Unlike the smoke test, this hovers via `Input.dispatchMouseEvent`, so it goes
 through real hit-testing: the cursor lands just inside a fixture's bottom-right

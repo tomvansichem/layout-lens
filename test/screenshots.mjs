@@ -4,7 +4,9 @@
 // Captures the listing images from the real extension hovering real elements
 // in test/testbed.html, so they show the overlay as it actually paints. The
 // Store accepts 1280×800 or 640×400 only; these are 1280×800 and the size is
-// asserted from each PNG's own header before it's written.
+// asserted from each PNG's own header before it's written. The page is laid
+// out at 1280×800 / SCALE and captured at SCALE×, so the overlay text is
+// readable in the listing instead of an 11px tooltip in a full desktop frame.
 //
 // Chrome is launched by test/harness.mjs — read its header for the
 // CHROME_PATH / "Chrome for Testing" requirement.
@@ -20,6 +22,13 @@ import { repoRoot, sleep, startInspector, waitFor } from "./harness.mjs";
 
 const WIDTH = 1280;
 const HEIGHT = 800;
+const SCALE = 2;
+const VIEW_W = WIDTH / SCALE;
+const VIEW_H = HEIGHT / SCALE;
+// Space kept above each fixture. The fixture sits near the top of the frame
+// so the tooltip, which hangs below the cursor, has room there instead of
+// flipping up over the element it describes.
+const TOP = 48;
 const outDir = join(repoRoot, "assets", "screenshots");
 
 // Ordered as they should appear on the listing: what the tool shows on any
@@ -44,7 +53,8 @@ async function capture(page, shot) {
   const at = await page.evaluate(`(() => {
     const el = document.getElementById(${JSON.stringify(shot.id)});
     if (!el) throw new Error("fixture not found: ${shot.id}");
-    el.scrollIntoView({ block: "center" });
+    el.scrollIntoView({ block: "start" });
+    scrollBy(0, -${TOP});
     // Never leave the page scrolled sideways: D1 is wider than the frame, and
     // the shot should show it running off the edge, not a shifted page.
     document.scrollingElement.scrollLeft = 0;
@@ -57,6 +67,7 @@ async function capture(page, shot) {
     return {
       x: Math.round(Math.min(r.right - 8, innerWidth - 40)),
       y: Math.round(Math.min(r.bottom - 8, innerHeight - 40)),
+      scrollY,
     };
   })()`);
 
@@ -78,7 +89,15 @@ async function capture(page, shot) {
   }
   await sleep(150); // a few rAF frames, so the rings sit on the final rect
 
-  const { data } = await page.send("Page.captureScreenshot", { format: "png" });
+  // The scale lives in the capture, not in a device pixel ratio: with
+  // deviceScaleFactor 2, headless Chrome kept returning the frame from right
+  // after the scroll, so every shot but the first showed the overlay still on
+  // the fixture's container. A clip with a scale renders a fresh frame.
+  // Clip coordinates are document-relative, hence scrollY.
+  const { data } = await page.send("Page.captureScreenshot", {
+    format: "png",
+    clip: { x: 0, y: at.scrollY, width: VIEW_W, height: VIEW_H, scale: SCALE },
+  });
   const buf = Buffer.from(data, "base64");
   const { width, height } = pngSize(buf);
   if (width !== WIDTH || height !== HEIGHT) {
@@ -89,16 +108,18 @@ async function capture(page, shot) {
 
 async function main() {
   mkdirSync(outDir, { recursive: true });
-  const { page, close } = await startInspector({ chromeArgs: [`--window-size=${WIDTH},${HEIGHT}`] });
+  const { page, close } = await startInspector({
+    chromeArgs: [`--window-size=${VIEW_W},${VIEW_H}`],
+  });
 
   try {
     // The window size sets the frame; the override pins the viewport and the
-    // pixel ratio, so the capture is 1280×800 on any host. Light scheme is
+    // pixel ratio, so the layout is the same on any host. Light scheme is
     // forced because testbed.html is theme-aware and the machine running this
     // shouldn't decide what the listing looks like.
     await page.send("Emulation.setDeviceMetricsOverride", {
-      width: WIDTH,
-      height: HEIGHT,
+      width: VIEW_W,
+      height: VIEW_H,
       deviceScaleFactor: 1,
       mobile: false,
     });
